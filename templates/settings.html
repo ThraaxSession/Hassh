@@ -66,11 +66,11 @@
                 
                 <!-- OTP Setup Section -->
                 <div id="otpSetupSection" style="display: none;">
-                    <h4>Setup Two-Factor Authentication</h4>
-                    <p>Scan this QR code with your authenticator app (e.g., Google Authenticator, Authy):</p>
-                    <div id="qrCode"></div>
-                    <p>Or manually enter this secret key:</p>
-                    <code id="otpSecret" style="display: block; padding: 10px; background: var(--bg-secondary); color: var(--text-primary); margin: 10px 0; border-radius: 6px; border: 1px solid var(--border-color);"></code>
+                    <h4 style="color: var(--text-primary); margin-bottom: 15px;">Setup Two-Factor Authentication</h4>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">Scan this QR code with your authenticator app (e.g., Google Authenticator, Authy):</p>
+                    <div id="qrCode" style="margin-bottom: 15px;"></div>
+                    <p style="color: var(--text-secondary); margin-bottom: 10px;">Or manually enter this secret key:</p>
+                    <code id="otpSecret" style="display: block; padding: 10px; background: var(--bg-secondary); color: var(--text-primary); margin: 10px 0 20px 0; border-radius: 6px; border: 1px solid var(--border-color);"></code>
                     
                     <form id="otpEnableForm">
                         <div class="form-group">
@@ -96,7 +96,7 @@
                 
                 <!-- Disable OTP Section -->
                 <div id="otpDisableSection" style="display: none;">
-                    <p><strong>Two-factor authentication is enabled.</strong></p>
+                    <p style="color: var(--text-primary); margin-bottom: 15px;"><strong>Two-factor authentication is enabled.</strong></p>
                     <button onclick="disableOTP()" class="btn btn-danger">Disable 2FA</button>
                 </div>
                 

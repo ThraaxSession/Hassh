@@ -71,10 +71,10 @@ async function handleLogin(e) {
 
         // Check if password change or HA config is required
         if (data.require_password_change) {
-            alert('Please change your password in Settings');
+            await Dialog.alert('Please change your password in Settings', 'Password Change Required', 'warning');
             window.location.href = '/settings';
         } else if (!data.has_ha_config) {
-            alert('Please configure your Home Assistant connection in Settings');
+            await Dialog.alert('Please configure your Home Assistant connection in Settings', 'Configuration Required', 'info');
             window.location.href = '/settings';
         } else {
             window.location.href = '/';
@@ -159,10 +159,10 @@ async function handleOTPVerify(e, username, password) {
 
         // Check if password change or HA config is required
         if (data.require_password_change) {
-            alert('Please change your password in Settings');
+            await Dialog.alert('Please change your password in Settings', 'Password Change Required', 'warning');
             window.location.href = '/settings';
         } else if (!data.has_ha_config) {
-            alert('Please configure your Home Assistant connection in Settings');
+            await Dialog.alert('Please configure your Home Assistant connection in Settings', 'Configuration Required', 'info');
             window.location.href = '/settings';
         } else {
             window.location.href = '/';

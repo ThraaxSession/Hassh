@@ -82,12 +82,12 @@ async function handlePasswordChange(e) {
     const confirmPassword = document.getElementById('confirmPassword').value;
 
     if (newPassword !== confirmPassword) {
-        alert('New passwords do not match');
+        Toast.error('New passwords do not match');
         return;
     }
 
     if (newPassword.length < 8) {
-        alert('Password must be at least 8 characters long');
+        Toast.error('Password must be at least 8 characters long');
         return;
     }
 
@@ -111,11 +111,11 @@ async function handlePasswordChange(e) {
             throw new Error(error.error || 'Failed to change password');
         }
 
-        alert('Password changed successfully!');
+        Toast.success('Password changed successfully!');
         document.getElementById('passwordForm').reset();
     } catch (error) {
         console.error('Error changing password:', error);
-        alert('Error: ' + error.message);
+        Toast.error(error.message);
     }
 }
 
@@ -126,7 +126,7 @@ async function handleHAConfig(e) {
     const haToken = document.getElementById('haToken').value.trim();
 
     if (!haUrl || !haToken) {
-        alert('All fields are required');
+        Toast.error('All fields are required');
         return;
     }
 
@@ -150,12 +150,12 @@ async function handleHAConfig(e) {
             throw new Error(error.error || 'Failed to save configuration');
         }
 
-        alert('Home Assistant configuration saved successfully!');
+        Toast.success('Home Assistant configuration saved successfully!');
         document.getElementById('haToken').value = '';
         await loadSettings();
     } catch (error) {
         console.error('Error saving HA config:', error);
-        alert('Error: ' + error.message);
+        Toast.error(error.message);
     }
 }
 
@@ -220,7 +220,7 @@ async function setupOTP() {
         document.getElementById('otpSetupSection').style.display = 'block';
     } catch (error) {
         console.error('Error setting up OTP:', error);
-        alert('Error: ' + error.message);
+        Toast.error(error.message);
     }
 }
 
@@ -263,7 +263,7 @@ async function handleOTPEnable(e) {
         document.getElementById('otpEnableForm').reset();
     } catch (error) {
         console.error('Error enabling OTP:', error);
-        alert('Error: ' + error.message);
+        Toast.error(error.message);
     }
 }
 
@@ -318,12 +318,12 @@ async function handleOTPDisable(e) {
             throw new Error(error.error || 'Failed to disable OTP');
         }
 
-        alert('Two-factor authentication has been disabled');
+        Toast.success('Two-factor authentication has been disabled');
         document.getElementById('otpDisableFormElement').reset();
         document.getElementById('otpDisableForm').style.display = 'none';
         loadOTPStatus();
     } catch (error) {
         console.error('Error disabling OTP:', error);
-        alert('Error: ' + error.message);
+        Toast.error(error.message);
     }
 }

@@ -34,11 +34,37 @@ function renderShareInfo(share, accessMode) {
     const container = document.getElementById('shareInfo');
     
     let details = '';
+    let progressBar = '';
+    
     if (share.type === 'counter') {
+        const progress = (share.access_count / share.max_access) * 100;
         details = `<p>Access Count: ${share.access_count}/${share.max_access}</p>`;
+        progressBar = `
+            <div class="progress-container">
+                <div class="progress-bar" style="width: ${progress}%"></div>
+            </div>
+            <div class="progress-label">
+                <span>${share.access_count} accessed</span>
+                <span>${share.max_access} maximum</span>
+            </div>
+        `;
     } else if (share.type === 'time') {
-        const expiresAt = new Date(share.expires_at).toLocaleString();
-        details = `<p>Expires: ${expiresAt}</p>`;
+        const expiresAt = new Date(share.expires_at);
+        const now = new Date();
+        const total = expiresAt - new Date(share.created_at || now);
+        const remaining = expiresAt - now;
+        const progress = Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+        
+        details = `<p>Expires: ${expiresAt.toLocaleString()}</p>`;
+        progressBar = `
+            <div class="progress-container">
+                <div class="progress-bar" style="width: ${progress}%"></div>
+            </div>
+            <div class="progress-label">
+                <span>${remaining > 0 ? 'Time remaining' : 'Expired'}</span>
+                <span>${remaining > 0 ? Math.floor(remaining / 1000 / 60) + ' minutes' : '0 minutes'}</span>
+            </div>
+        `;
     } else {
         details = '<p>Permanent Share</p>';
     }
@@ -50,6 +76,7 @@ function renderShareInfo(share, accessMode) {
         <div style="margin-bottom: 20px; color: #666;">
             ${details}
             <p>Sharing ${share.entity_ids.length} entities - ${accessModeLabel}</p>
+            ${progressBar}
         </div>
     `;
 }
@@ -149,7 +176,7 @@ async function triggerEntity(entityId, service) {
         setTimeout(() => loadSharedEntities(), 500);
     } catch (error) {
         console.error('Error triggering entity:', error);
-        alert('Failed to trigger entity: ' + error.message);
+        Toast.error('Failed to trigger entity: ' + error.message);
     }
 }
 

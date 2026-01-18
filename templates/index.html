@@ -27,18 +27,20 @@
             <!-- Entity Management Section -->
             <section id="section-entities" class="content-section active">
                 <div class="card">
-                    <h2>Entity Management</h2>
+                    <div class="section-header">
+                        <h2>📊 Entity Management</h2>
+                    </div>
                     
-                    <div class="add-entity-form">
+                    <div class="admin-section">
                         <h3>Add Entity to Track</h3>
                         <div class="form-row">
-                            <button id="browseEntitiesBtn" class="btn btn-secondary">Browse Entities</button>
+                            <button id="browseEntitiesBtn" class="btn btn-secondary">📋 Browse Entities</button>
                             <input type="text" id="entityIdInput" placeholder="Enter entity ID (e.g., light.living_room)" />
-                            <button id="addEntityBtn" class="btn btn-primary">Add Entity</button>
+                            <button id="addEntityBtn" class="btn btn-primary">➕ Add Entity</button>
                         </div>
                     </div>
 
-                    <div class="entity-list">
+                    <div class="admin-section">
                         <h3>Tracked Entities</h3>
                         <div id="entitiesList"></div>
                     </div>
@@ -48,9 +50,11 @@
             <!-- Share Link Management Section -->
             <section id="section-shares" class="content-section">
                 <div class="card">
-                    <h2>Share Links</h2>
+                    <div class="section-header">
+                        <h2>🔗 Share Links</h2>
+                    </div>
                     
-                    <div class="create-share-form">
+                    <div class="admin-section">
                         <h3>Create New Share Link</h3>
                         <div class="form-group">
                             <label>Select Entities to Share:</label>
@@ -92,10 +96,10 @@
                             <input type="datetime-local" id="expiresAt" />
                         </div>
 
-                        <button id="createShareBtn" class="btn btn-primary">Create Share Link</button>
+                        <button id="createShareBtn" class="btn btn-primary">➕ Create Share Link</button>
                     </div>
 
-                    <div class="share-list">
+                    <div class="admin-section">
                         <h3>Active Share Links</h3>
                         <div id="sharesList"></div>
                     </div>
@@ -105,8 +109,10 @@
             <!-- Shared With Me Section -->
             <section id="section-shared-with-me" class="content-section">
                 <div class="card">
-                    <h2>Entities Shared With You</h2>
-                    <p class="subtitle">View entities that other users have shared with you</p>
+                    <div class="section-header">
+                        <h2>📥 Entities Shared With You</h2>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">View entities that other users have shared with you</p>
                     <div id="sharedWithMeList"></div>
                 </div>
             </section>
@@ -114,8 +120,10 @@
             <!-- My Shared Entities Section -->
             <section id="section-my-shared-entities" class="content-section">
                 <div class="card">
-                    <h2>My Shared Entities</h2>
-                    <p class="subtitle">Entities you have shared with other users</p>
+                    <div class="section-header">
+                        <h2>📤 My Shared Entities</h2>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">Entities you have shared with other users</p>
                     <div id="mySharedEntitiesList"></div>
                 </div>
             </section>
@@ -123,9 +131,11 @@
             <!-- Settings Section -->
             <section id="section-settings" class="content-section">
                 <div class="card">
-                    <h2>Account Settings</h2>
+                    <div class="section-header">
+                        <h2>⚙️ Account Settings</h2>
+                    </div>
                     
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Change Password</h3>
                         <form id="passwordForm">
                             <div class="form-group">
@@ -140,11 +150,11 @@
                                 <label>Confirm New Password:</label>
                                 <input type="password" id="confirmPassword" autocomplete="new-password" required />
                             </div>
-                            <button type="submit" class="btn btn-primary">Change Password</button>
+                            <button type="submit" class="btn btn-primary">🔒 Change Password</button>
                         </form>
                     </div>
 
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Home Assistant Configuration</h3>
                         <form id="haConfigForm">
                             <div class="form-group">
@@ -155,12 +165,12 @@
                                 <label>Long-Lived Access Token:</label>
                                 <input type="password" id="haToken" placeholder="Enter your long-lived access token" required />
                             </div>
-                            <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            <button type="submit" class="btn btn-primary">💾 Save Configuration</button>
                         </form>
                         <div id="haConfigStatus"></div>
                     </div>
 
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Two-Factor Authentication (OTP)</h3>
                         <div id="otpStatus">
                             <p>Loading OTP status...</p>

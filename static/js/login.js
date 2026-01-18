@@ -93,22 +93,26 @@ function showOTPInput(username, password) {
         <div id="otpForm">
             <h3 style="margin-bottom: 20px;">Enter Two-Factor Code</h3>
             <p style="margin-bottom: 20px;">Enter the 6-digit code from your authenticator app or use a backup code.</p>
-            <form id="otpVerifyForm">
+            <form id="otpVerifyForm" class="login-form">
                 <div class="form-group">
                     <label>Verification Code:</label>
                     <input type="text" id="otpCode" placeholder="6-digit code or backup code" maxlength="8" required autocomplete="off" />
                 </div>
                 <button type="submit" class="btn btn-primary">Verify</button>
-                <button type="button" onclick="cancelOTP()" class="btn btn-secondary">Back</button>
+                <button type="button" onclick="cancelOTP()" class="btn btn-secondary" style="margin-top: 10px;">Back</button>
             </form>
             <div id="otpError"></div>
         </div>
     `;
     
-    const formContainer = document.querySelector('.card');
-    formContainer.insertAdjacentHTML('beforeend', otpFormHTML);
-    
-    document.getElementById('otpVerifyForm').addEventListener('submit', (e) => handleOTPVerify(e, username, password));
+    const formContainer = document.querySelector('.login-card');
+    if (formContainer) {
+        formContainer.insertAdjacentHTML('beforeend', otpFormHTML);
+        
+        document.getElementById('otpVerifyForm').addEventListener('submit', (e) => handleOTPVerify(e, username, password));
+    } else {
+        console.error('Login card container not found');
+    }
 }
 
 function cancelOTP() {

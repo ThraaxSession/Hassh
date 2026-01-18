@@ -96,7 +96,7 @@ function showOTPInput(username, password) {
             <form id="otpVerifyForm">
                 <div class="form-group">
                     <label>Verification Code:</label>
-                    <input type="text" id="otpCode" placeholder="000000" maxlength="8" required autocomplete="off" />
+                    <input type="text" id="otpCode" placeholder="6-digit code or backup code" maxlength="8" required autocomplete="off" />
                 </div>
                 <button type="submit" class="btn btn-primary">Verify</button>
                 <button type="button" onclick="cancelOTP()" class="btn btn-secondary">Back</button>

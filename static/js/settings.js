@@ -210,7 +210,7 @@ async function setupOTP() {
 
         // Generate QR code
         const qrCodeDiv = document.getElementById('qrCode');
-        qrCodeDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.url)}" alt="QR Code" />`;
+        qrCodeDiv.innerHTML = `<img src="${data.qr_code}" alt="QR Code" style="display: block; margin: 10px auto;" />`;
         
         // Show secret
         document.getElementById('otpSecret').textContent = data.secret;

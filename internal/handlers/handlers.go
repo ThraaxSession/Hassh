@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/ThraaxSession/Hash/internal/ha"
 	"github.com/ThraaxSession/Hash/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/skip2/go-qrcode"
 )
 
 // Handler manages all HTTP handlers
@@ -227,6 +229,7 @@ func (h *Handler) GetUserSettings(c *gin.Context) {
 		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
 		"ha_url":                  user.HAURL,
 		"require_password_change": user.RequirePasswordChange,
+		"otp_enabled":             user.OTPEnabled,
 	})
 }
 
@@ -999,10 +1002,21 @@ func (h *Handler) SetupOTP(c *gin.Context) {
 		return
 	}
 
+	// Generate QR code as PNG
+	qrCode, err := qrcode.Encode(url, qrcode.Medium, 256)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate QR code"})
+		return
+	}
+
+	// Encode QR code to base64
+	qrCodeBase64 := base64.StdEncoding.EncodeToString(qrCode)
+
 	// Don't save yet - user needs to verify first
 	c.JSON(http.StatusOK, gin.H{
-		"secret": secret,
-		"url":    url,
+		"secret":  secret,
+		"url":     url,
+		"qr_code": "data:image/png;base64," + qrCodeBase64,
 	})
 }
 

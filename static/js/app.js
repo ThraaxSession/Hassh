@@ -9,6 +9,7 @@ let authToken = '';
 let isAdmin = false;
 let allUsers = [];
 let sharedWithMe = [];
+let mySharedEntities = [];
 
 // Section navigation
 function showSection(sectionId) {
@@ -34,6 +35,8 @@ function showSection(sectionId) {
     // Load section-specific data
     if (sectionId === 'shared-with-me') {
         loadSharedWithMe();
+    } else if (sectionId === 'my-shared-entities') {
+        loadMySharedEntities();
     } else if (sectionId === 'admin') {
         loadAdminPanel();
     }
@@ -69,13 +72,11 @@ function checkAuth() {
 function displayUsername(username) {
     const header = document.querySelector('header');
     const userControls = document.createElement('div');
-    userControls.style.cssText = 'position: absolute; top: 20px; right: 20px;';
+    userControls.className = 'user-controls';
     userControls.innerHTML = `
         <span style="color: white; margin-right: 15px;">👤 ${escapeHtml(username)}</span>
-        <button onclick="window.location.href='/settings'" class="btn btn-secondary" style="padding: 8px 16px; margin-right: 5px;">Settings</button>
         <button onclick="logout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
     `;
-    header.style.position = 'relative';
     header.appendChild(userControls);
 }
 
@@ -1098,4 +1099,95 @@ async function renderSharedWithMe() {
 async function viewSharedEntity(entityId, ownerName, accessMode) {
     alert(`Viewing entity ${entityId} shared by ${ownerName}\nAccess Mode: ${accessMode}\n\nThis would show entity details and controls if triggerable.`);
     // TODO: Implement entity details view with real-time state
+}
+
+// My Shared Entities functionality
+async function loadMySharedEntities() {
+    try {
+        const response = await fetch(`${API_BASE}/my-shares`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) throw new Error('Failed to load my shared entities');
+        
+        mySharedEntities = await response.json();
+        renderMySharedEntities();
+    } catch (error) {
+        console.error('Error loading my shared entities:', error);
+        showError('Failed to load my shared entities: ' + error.message);
+    }
+}
+
+async function renderMySharedEntities() {
+    const container = document.getElementById('mySharedEntitiesList');
+    
+    if (!mySharedEntities || mySharedEntities.length === 0) {
+        container.innerHTML = '<div class="empty-state">You haven\'t shared any entities with other users yet.</div>';
+        return;
+    }
+    
+    // Group by target user
+    const groupedByUser = {};
+    mySharedEntities.forEach(item => {
+        const targetName = item.TargetUser ? item.TargetUser.Username : 'Unknown';
+        if (!groupedByUser[targetName]) {
+            groupedByUser[targetName] = [];
+        }
+        groupedByUser[targetName].push(item);
+    });
+    
+    container.innerHTML = Object.keys(groupedByUser).map(targetName => {
+        const entities = groupedByUser[targetName];
+        const entitiesHtml = entities.map(item => `
+            <div class="entity-item">
+                <div class="entity-info">
+                    <div class="entity-id">${escapeHtml(item.EntityID)}</div>
+                    <div class="entity-state">
+                        <span class="badge badge-${item.AccessMode === 'triggerable' ? 'success' : 'info'}">
+                            ${item.AccessMode === 'triggerable' ? '🎛️ Triggerable' : '👁️ Read-Only'}
+                        </span>
+                    </div>
+                </div>
+                <button class="btn btn-danger" onclick="unshareEntity(${item.ID})">
+                    Unshare
+                </button>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="shared-group">
+                <h3 class="shared-owner">👤 Shared with: ${escapeHtml(targetName)}</h3>
+                ${entitiesHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+async function unshareEntity(sharedEntityId) {
+    if (!confirm('Are you sure you want to unshare this entity?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/shared-entity/${sharedEntityId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) throw new Error('Failed to unshare entity');
+        
+        showSuccess('Entity unshared successfully');
+        await loadMySharedEntities();
+    } catch (error) {
+        console.error('Error unsharing entity:', error);
+        showError('Failed to unshare entity: ' + error.message);
+    }
 }

@@ -18,6 +18,8 @@
             <button class="menu-btn active" onclick="showSection('entities')">📊 My Entities</button>
             <button class="menu-btn" onclick="showSection('shares')">🔗 Share Links</button>
             <button class="menu-btn" onclick="showSection('shared-with-me')">📥 Shared With Me</button>
+            <button class="menu-btn" onclick="showSection('my-shared-entities')">📤 My Shared Entities</button>
+            <button class="menu-btn" onclick="showSection('settings')">⚙️ Settings</button>
             <button class="menu-btn" id="adminMenuBtn" onclick="showSection('admin')" style="display: none;">👥 Admin Panel</button>
         </nav>
 
@@ -107,6 +109,20 @@
                     <p class="subtitle">View entities that other users have shared with you</p>
                     <div id="sharedWithMeList"></div>
                 </div>
+            </section>
+
+            <!-- My Shared Entities Section -->
+            <section id="section-my-shared-entities" class="content-section">
+                <div class="card">
+                    <h2>My Shared Entities</h2>
+                    <p class="subtitle">Entities you have shared with other users</p>
+                    <div id="mySharedEntitiesList"></div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="section-settings" class="content-section">
+                <iframe src="/settings" style="width: 100%; height: 80vh; border: none; border-radius: 8px;"></iframe>
             </section>
 
             <!-- Admin Panel Section -->

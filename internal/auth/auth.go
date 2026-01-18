@@ -1,13 +1,15 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 
 	"github.com/ThraaxSession/Hash/internal/database"
-	"github.com/ThraaxSession/Hash/internal/ha"
 	"github.com/ThraaxSession/Hash/internal/models"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var jwtSecret []byte
@@ -24,39 +26,71 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// ValidateHAToken validates a Home Assistant token and creates/updates user
-func ValidateHAToken(haURL, token, username string) (*models.User, error) {
-	// Create HA client and validate token by fetching states
-	client := ha.NewClient(haURL, token)
-	_, err := client.GetAllStates()
-	if err != nil {
-		return nil, errors.New("invalid Home Assistant token")
-	}
+// GenerateRandomPassword generates a random password
+func GenerateRandomPassword() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
 
-	// Check if user exists
+// HashPassword hashes a password using bcrypt
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+// CheckPasswordHash compares a password with a hash
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// ValidateCredentials validates username and password
+func ValidateCredentials(username, password string) (*models.User, error) {
 	var user models.User
 	result := database.DB.Where("username = ?", username).First(&user)
 	
 	if result.Error != nil {
-		// Create new user
-		user = models.User{
-			Username: username,
-			HAToken:  token,
-			HAURL:    haURL,
-		}
-		if err := database.DB.Create(&user).Error; err != nil {
-			return nil, err
-		}
-	} else {
-		// Update token and URL
-		user.HAToken = token
-		user.HAURL = haURL
-		if err := database.DB.Save(&user).Error; err != nil {
-			return nil, err
-		}
+		return nil, errors.New("invalid username or password")
+	}
+
+	if !CheckPasswordHash(password, user.Password) {
+		return nil, errors.New("invalid username or password")
 	}
 
 	return &user, nil
+}
+
+// CreateUser creates a new user with a generated password
+func CreateUser(username string) (*models.User, string, error) {
+	// Check if user already exists
+	var existingUser models.User
+	result := database.DB.Where("username = ?", username).First(&existingUser)
+	if result.Error == nil {
+		return nil, "", errors.New("username already exists")
+	}
+
+	// Generate random password
+	password := GenerateRandomPassword()
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return nil, "", err
+	}
+
+	user := models.User{
+		Username:              username,
+		Password:              hashedPassword,
+		RequirePasswordChange: true,
+	}
+
+	if err := database.DB.Create(&user).Error; err != nil {
+		return nil, "", err
+	}
+
+	return &user, password, nil
 }
 
 // GenerateToken generates a JWT token for a user

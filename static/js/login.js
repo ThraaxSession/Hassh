@@ -16,10 +16,9 @@ async function handleLogin(e) {
     e.preventDefault();
 
     const username = document.getElementById('username').value.trim();
-    const haUrl = document.getElementById('haUrl').value.trim();
-    const haToken = document.getElementById('haToken').value.trim();
+    const password = document.getElementById('password').value;
 
-    if (!username || !haUrl || !haToken) {
+    if (!username || !password) {
         showError('All fields are required');
         return;
     }
@@ -30,8 +29,7 @@ async function handleLogin(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 username: username,
-                ha_url: haUrl,
-                ha_token: haToken
+                password: password
             })
         });
 
@@ -45,10 +43,17 @@ async function handleLogin(e) {
         // Store token and user info
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.user.username);
-        localStorage.setItem('haUrl', haUrl);
 
-        // Redirect to main page
-        window.location.href = '/';
+        // Check if password change or HA config is required
+        if (data.require_password_change) {
+            alert('Please change your password in Settings');
+            window.location.href = '/settings';
+        } else if (!data.has_ha_config) {
+            alert('Please configure your Home Assistant connection in Settings');
+            window.location.href = '/settings';
+        } else {
+            window.location.href = '/';
+        }
     } catch (error) {
         console.error('Login error:', error);
         showError(error.message);

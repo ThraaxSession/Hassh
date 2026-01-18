@@ -62,6 +62,14 @@ func main() {
 		c.HTML(http.StatusOK, "login.html", nil)
 	})
 
+	r.GET("/register", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "register.html", nil)
+	})
+
+	r.GET("/settings", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "settings.html", nil)
+	})
+
 	r.GET("/share/:id", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "share.html", nil)
 	})
@@ -71,13 +79,19 @@ func main() {
 	{
 		// Public endpoints
 		api.POST("/login", handler.Login)
-		api.GET("/shares/:id", handler.GetShareLink)                   // Public share link access
+		api.POST("/register", handler.Register)
+		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access
 		api.POST("/shares/:id/trigger/:entityId", handler.TriggerEntity) // Public trigger for triggerable shares
 
 		// Protected endpoints (require authentication)
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
+			// User settings
+			protected.GET("/settings", handler.GetUserSettings)
+			protected.POST("/settings/ha", handler.ConfigureHA)
+			protected.POST("/settings/password", handler.ChangePassword)
+
 			// Entity management
 			protected.GET("/entities", handler.GetEntities)
 			protected.POST("/entities", handler.AddEntity)

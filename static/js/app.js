@@ -34,14 +34,15 @@ function checkAuth() {
 // Display username in header
 function displayUsername(username) {
     const header = document.querySelector('header');
-    const logoutBtn = document.createElement('div');
-    logoutBtn.style.cssText = 'position: absolute; top: 20px; right: 20px;';
-    logoutBtn.innerHTML = `
+    const userControls = document.createElement('div');
+    userControls.style.cssText = 'position: absolute; top: 20px; right: 20px;';
+    userControls.innerHTML = `
         <span style="color: white; margin-right: 15px;">👤 ${escapeHtml(username)}</span>
+        <button onclick="window.location.href='/settings'" class="btn btn-secondary" style="padding: 8px 16px; margin-right: 5px;">Settings</button>
         <button onclick="logout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
     `;
     header.style.position = 'relative';
-    header.appendChild(logoutBtn);
+    header.appendChild(userControls);
 }
 
 // Logout function

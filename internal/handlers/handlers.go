@@ -28,12 +28,11 @@ func NewHandler(haClient *ha.Client) *Handler {
 	}
 }
 
-// Login handles user login with HA token
+// Login handles user login with username and password
 func (h *Handler) Login(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
-		HAToken  string `json:"ha_token" binding:"required"`
-		HAURL    string `json:"ha_url" binding:"required"`
+		Password string `json:"password" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -41,10 +40,10 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	// Validate HA token
-	user, err := auth.ValidateHAToken(req.HAURL, req.HAToken, req.Username)
+	// Validate credentials
+	user, err := auth.ValidateCredentials(req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Home Assistant credentials: " + err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -56,8 +55,147 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": token,
-		"user":  user,
+		"token":                   token,
+		"user":                    user,
+		"require_password_change": user.RequirePasswordChange,
+		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
+	})
+}
+
+// Register handles user registration
+func (h *Handler) Register(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create user with generated password
+	user, password, err := auth.CreateUser(req.Username)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Generate JWT token
+	token, err := auth.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"token":                   token,
+		"user":                    user,
+		"generated_password":      password,
+		"require_password_change": true,
+		"message":                 "Please change your password after login",
+	})
+}
+
+// ChangePassword handles password change
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var req struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify current password
+	if !auth.CheckPasswordHash(req.CurrentPassword, user.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Current password is incorrect"})
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	// Update password
+	user.Password = hashedPassword
+	user.RequirePasswordChange = false
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}
+
+// ConfigureHA handles Home Assistant configuration
+func (h *Handler) ConfigureHA(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var req struct {
+		HAURL   string `json:"ha_url" binding:"required"`
+		HAToken string `json:"ha_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate HA token by trying to fetch states
+	haClient := ha.NewClient(req.HAURL, req.HAToken)
+	_, err := haClient.GetAllStates()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Home Assistant URL or token: " + err.Error()})
+		return
+	}
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Update HA configuration
+	user.HAURL = req.HAURL
+	user.HAToken = req.HAToken
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update configuration"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Home Assistant configuration updated successfully"})
+}
+
+// GetUserSettings returns user settings
+func (h *Handler) GetUserSettings(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"username":                user.Username,
+		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
+		"ha_url":                  user.HAURL,
+		"require_password_change": user.RequirePasswordChange,
 	})
 }
 
@@ -78,6 +216,12 @@ func (h *Handler) GetEntities(c *gin.Context) {
 func (h *Handler) AddEntity(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 	user := c.MustGet("user").(*models.User)
+
+	// Check if HA is configured
+	if user.HAURL == "" || user.HAToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Please configure Home Assistant in Settings first"})
+		return
+	}
 
 	var req struct {
 		EntityID string `json:"entity_id" binding:"required"`
@@ -358,6 +502,12 @@ func (h *Handler) RefreshEntities() error {
 // GetAllHAEntities fetches all available entities from Home Assistant for the authenticated user
 func (h *Handler) GetAllHAEntities(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
+
+	// Check if HA is configured
+	if user.HAURL == "" || user.HAToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Please configure Home Assistant in Settings first"})
+		return
+	}
 
 	// Create HA client with user's token and URL
 	haClient := ha.NewClient(user.HAURL, user.HAToken)

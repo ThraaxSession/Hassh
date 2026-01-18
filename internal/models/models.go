@@ -10,12 +10,14 @@ import (
 
 // User represents an authenticated user
 type User struct {
-	ID        uint      `gorm:"primarykey" json:"id"`
-	Username  string    `gorm:"uniqueIndex;not null" json:"username"`
-	HAToken   string    `gorm:"not null" json:"-"` // Home Assistant Token (not exposed in JSON)
-	HAURL     string    `gorm:"not null" json:"-"` // Home Assistant URL
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                    uint      `gorm:"primarykey" json:"id"`
+	Username              string    `gorm:"uniqueIndex;not null" json:"username"`
+	Password              string    `gorm:"not null" json:"-"` // Hashed password (not exposed in JSON)
+	HAToken               string    `json:"-"`                 // Home Assistant Token (not exposed in JSON)
+	HAURL                 string    `json:"-"`                 // Home Assistant URL
+	RequirePasswordChange bool      `gorm:"default:false" json:"require_password_change"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 // Entity represents a Home Assistant entity

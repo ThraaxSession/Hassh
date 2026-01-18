@@ -629,12 +629,12 @@ func (h *Handler) GetUsersList(c *gin.Context) {
 		Username string `json:"username"`
 	}
 	
-	userList := make([]UserInfo, len(users))
-	for i, user := range users {
-		userList[i] = UserInfo{
+	userList := make([]UserInfo, 0, len(users))
+	for _, user := range users {
+		userList = append(userList, UserInfo{
 			ID:       user.ID,
 			Username: user.Username,
-		}
+		})
 	}
 
 	c.JSON(http.StatusOK, userList)

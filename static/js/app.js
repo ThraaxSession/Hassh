@@ -818,6 +818,7 @@ async function loadAdminUsers() {
         if (!response.ok) throw new Error('Failed to load users');
         
         const users = await response.json();
+        allUsers = users; // Keep state consistent
         renderUsersList(users);
     } catch (error) {
         console.error('Error loading admin users:', error);

@@ -9,6 +9,7 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 20px;
+    overflow-y: auto;
 }
 
 .container {
@@ -100,6 +101,8 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .card {
@@ -531,6 +534,16 @@ input:checked + .slider:before {
 
 .slider.round:before {
     border-radius: 50%;
+}
+
+/* Settings Page Improvements */
+.card .card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card .card:last-of-type {
+    margin-bottom: 0;
 }
 
 /* Responsive adjustments */

@@ -187,7 +187,8 @@ async function addEntity() {
 }
 
 async function deleteEntity(entityId) {
-    if (!confirm('Are you sure you want to delete this entity?')) return;
+    const confirmed = await Dialog.confirm('Are you sure you want to delete this entity?', 'Delete Entity');
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`${API_BASE}/entities/${entityId}`, {
@@ -499,7 +500,8 @@ async function createShareLink() {
 }
 
 async function deleteShareLink(shareId) {
-    if (!confirm('Are you sure you want to delete this share link?')) return;
+    const confirmed = await Dialog.confirm('Are you sure you want to delete this share link?', 'Delete Share Link');
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`${API_BASE}/shares/${shareId}`, {
@@ -1038,7 +1040,8 @@ async function createNewUser() {
 }
 
 async function deleteUser(userId) {
-    if (!confirm('Are you sure you want to delete this user? This will also delete all their entities and share links.')) {
+    const confirmed = await Dialog.confirm('Are you sure you want to delete this user? This will also delete all their entities and share links.', 'Delete User');
+    if (!confirmed) {
         return;
     }
     
@@ -1390,7 +1393,8 @@ async function renderMySharedEntities() {
 }
 
 async function unshareEntity(sharedEntityId) {
-    if (!confirm('Are you sure you want to unshare this entity?')) return;
+    const confirmed = await Dialog.confirm('Are you sure you want to unshare this entity?', 'Unshare Entity');
+    if (!confirmed) return;
     
     try {
         const response = await fetch(`${API_BASE}/shared-entity/${sharedEntityId}`, {
@@ -1751,7 +1755,8 @@ async function handleOTPDisable(e) {
 
     const password = passwordInput.value;
 
-    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
+    const confirmed = await Dialog.confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.', 'Disable Two-Factor Authentication');
+    if (!confirmed) {
         return;
     }
 

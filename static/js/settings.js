@@ -295,7 +295,8 @@ async function handleOTPDisable(e) {
 
     const password = document.getElementById('disableOtpPassword').value;
 
-    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
+    const confirmed = await Dialog.confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.', 'Disable Two-Factor Authentication');
+    if (!confirmed) {
         return;
     }
 

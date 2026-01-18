@@ -10,6 +10,7 @@ let isAdmin = false;
 let allUsers = [];
 let sharedWithMe = [];
 let mySharedEntities = [];
+let settingsListenersSet = false; // Track if settings listeners are set
 
 // Section navigation
 function showSection(sectionId) {
@@ -1241,18 +1242,20 @@ async function loadSettings() {
         console.error('Error loading settings:', error);
     }
     
-    // Setup form listeners if not already set
-    const passwordForm = document.getElementById('passwordForm');
-    const haConfigForm = document.getElementById('haConfigForm');
-    
-    if (passwordForm && !passwordForm.dataset.listenerSet) {
-        passwordForm.addEventListener('submit', handlePasswordChange);
-        passwordForm.dataset.listenerSet = 'true';
-    }
-    
-    if (haConfigForm && !haConfigForm.dataset.listenerSet) {
-        haConfigForm.addEventListener('submit', handleHAConfig);
-        haConfigForm.dataset.listenerSet = 'true';
+    // Setup form listeners only once
+    if (!settingsListenersSet) {
+        const passwordForm = document.getElementById('passwordForm');
+        const haConfigForm = document.getElementById('haConfigForm');
+        
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', handlePasswordChange);
+        }
+        
+        if (haConfigForm) {
+            haConfigForm.addEventListener('submit', handleHAConfig);
+        }
+        
+        settingsListenersSet = true;
     }
 }
 
@@ -1333,7 +1336,7 @@ async function handleHAConfig(e) {
         }
 
         showSuccess('Home Assistant configuration saved successfully!');
-        document.getElementById('haToken').value = '';
+        document.getElementById('haConfigForm').reset();
         await loadSettings();
     } catch (error) {
         console.error('Error saving HA config:', error);

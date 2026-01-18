@@ -89,7 +89,24 @@ function renderSharedEntities(entities, accessMode) {
         return;
     }
     
-    container.innerHTML = entities.map(entity => {
+    // Sort entities: first alphabetically by entity_id, then by state
+    const sortedEntities = [...entities].sort((a, b) => {
+        const idA = (a.entity_id || '').toLowerCase();
+        const idB = (b.entity_id || '').toLowerCase();
+        const stateA = (a.state || 'unknown').toLowerCase();
+        const stateB = (b.state || 'unknown').toLowerCase();
+        
+        // First sort by entity_id
+        if (idA < idB) return -1;
+        if (idA > idB) return 1;
+        
+        // If entity_id is the same, sort by state
+        if (stateA < stateB) return -1;
+        if (stateA > stateB) return 1;
+        return 0;
+    });
+    
+    container.innerHTML = sortedEntities.map(entity => {
         const attributes = entity.attributes || {};
         const attributesList = Object.entries(attributes)
             .slice(0, 5) // Show only first 5 attributes

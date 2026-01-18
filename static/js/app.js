@@ -6,6 +6,7 @@ let trackedEntities = [];
 let allHAEntities = [];
 let shareLinks = [];
 let authToken = '';
+let isAdmin = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadEntities();
     loadShareLinks();
     startAutoRefresh();
+    checkAdminStatus();
 });
 
 // Check if user is authenticated
@@ -183,9 +185,12 @@ function renderEntities() {
 }
 
 // Browse Entities Modal
+let selectedEntities = []; // Track selected entities for batch operations
+
 async function showBrowseModal() {
     const modal = document.getElementById('browseModal');
     modal.style.display = 'block';
+    selectedEntities = []; // Reset selection
     
     if (allHAEntities.length === 0) {
         try {
@@ -223,11 +228,94 @@ function renderAllEntities(filter = '') {
     }
     
     container.innerHTML = filtered.map(entity => `
-        <div class="browse-entity-item" onclick="selectEntity('${escapeHtml(entity.entity_id)}')">
-            <div class="browse-entity-id">${escapeHtml(entity.entity_id)}</div>
-            <div class="browse-entity-state">State: ${escapeHtml(entity.state || 'unknown')}</div>
+        <div class="browse-entity-item">
+            <input type="checkbox" id="entity_${escapeHtml(entity.entity_id)}" 
+                   value="${escapeHtml(entity.entity_id)}" 
+                   onchange="toggleEntitySelection('${escapeHtml(entity.entity_id)}')"
+                   ${selectedEntities.includes(entity.entity_id) ? 'checked' : ''}>
+            <label for="entity_${escapeHtml(entity.entity_id)}" style="flex-grow: 1; cursor: pointer;">
+                <div class="browse-entity-id">${escapeHtml(entity.entity_id)}</div>
+                <div class="browse-entity-state">State: ${escapeHtml(entity.state || 'unknown')}</div>
+            </label>
         </div>
     `).join('');
+    
+    // Add select all button if not already present
+    if (!document.getElementById('selectAllBtn')) {
+        const header = document.createElement('div');
+        header.style.cssText = 'margin-bottom: 10px; display: flex; gap: 10px;';
+        header.innerHTML = `
+            <button id="selectAllBtn" class="btn btn-secondary" onclick="selectAllEntities()">Select All</button>
+            <button class="btn btn-secondary" onclick="deselectAllEntities()">Deselect All</button>
+            <button class="btn btn-primary" onclick="addSelectedEntities()">Add Selected (${selectedEntities.length})</button>
+        `;
+        container.parentElement.insertBefore(header, container);
+    } else {
+        // Update count
+        const addBtn = document.querySelector('#selectAllBtn').parentElement.querySelector('.btn-primary');
+        addBtn.textContent = `Add Selected (${selectedEntities.length})`;
+    }
+}
+
+function toggleEntitySelection(entityId) {
+    const index = selectedEntities.indexOf(entityId);
+    if (index > -1) {
+        selectedEntities.splice(index, 1);
+    } else {
+        selectedEntities.push(entityId);
+    }
+    renderAllEntities(document.getElementById('entitySearch').value);
+}
+
+function selectAllEntities() {
+    const filter = document.getElementById('entitySearch').value;
+    const filtered = allHAEntities.filter(entity => 
+        entity.entity_id && entity.entity_id.toLowerCase().includes(filter.toLowerCase())
+    );
+    filtered.forEach(entity => {
+        if (!selectedEntities.includes(entity.entity_id)) {
+            selectedEntities.push(entity.entity_id);
+        }
+    });
+    renderAllEntities(filter);
+}
+
+function deselectAllEntities() {
+    selectedEntities = [];
+    renderAllEntities(document.getElementById('entitySearch').value);
+}
+
+async function addSelectedEntities() {
+    if (selectedEntities.length === 0) {
+        showError('Please select at least one entity');
+        return;
+    }
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const entityId of selectedEntities) {
+        try {
+            const response = await fetch(`${API_BASE}/entities`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ entity_id: entityId })
+            });
+            
+            if (response.ok) {
+                successCount++;
+            } else {
+                errorCount++;
+            }
+        } catch (error) {
+            errorCount++;
+        }
+    }
+    
+    showSuccess(`Added ${successCount} entities. ${errorCount > 0 ? errorCount + ' failed.' : ''}`);
+    selectedEntities = [];
+    document.getElementById('browseModal').style.display = 'none';
+    await loadEntities();
 }
 
 function filterEntities() {
@@ -376,7 +464,10 @@ function renderShareLinks() {
                         <span class="badge ${accessModeBadge}">${accessModeText}</span>
                         <span class="badge ${statusBadge}">${link.active ? 'Active' : 'Inactive'}</span>
                     </div>
-                    <button class="btn btn-danger" onclick="deleteShareLink('${link.id}')">Delete</button>
+                    <div>
+                        <button class="btn btn-secondary" onclick="editShareLink('${link.id}')" style="margin-right: 5px;">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteShareLink('${link.id}')">Delete</button>
+                    </div>
                 </div>
                 <div class="share-details">
                     <div>Entities: ${link.entity_ids.length}</div>
@@ -388,6 +479,159 @@ function renderShareLinks() {
             </div>
         `;
     }).join('');
+}
+
+function editShareLink(shareId) {
+    const share = shareLinks.find(s => s.id === shareId);
+    if (!share) return;
+    
+    // Show edit modal (we'll create this)
+    const modal = document.getElementById('editShareModal');
+    if (!modal) {
+        // Create edit modal dynamically
+        const modalHTML = `
+            <div id="editShareModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="document.getElementById('editShareModal').style.display='none'">&times;</span>
+                    <h2>Edit Share Link</h2>
+                    <div id="editShareContent"></div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    const content = document.getElementById('editShareContent');
+    content.innerHTML = `
+        <div class="form-group">
+            <label>Select Entities to Share:</label>
+            <div id="editShareEntitySelect" class="checkbox-group"></div>
+        </div>
+        
+        <div class="form-group">
+            <label>Link Type:</label>
+            <select id="editShareType">
+                <option value="permanent" ${share.type === 'permanent' ? 'selected' : ''}>Permanent</option>
+                <option value="counter" ${share.type === 'counter' ? 'selected' : ''}>Counter-Limited</option>
+                <option value="time" ${share.type === 'time' ? 'selected' : ''}>Time-Limited</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Access Mode:</label>
+            <select id="editAccessMode">
+                <option value="readonly" ${share.access_mode === 'readonly' ? 'selected' : ''}>Read-Only</option>
+                <option value="triggerable" ${share.access_mode === 'triggerable' ? 'selected' : ''}>Triggerable</option>
+            </select>
+        </div>
+        
+        <div id="editShareOptions"></div>
+        
+        <button class="btn btn-primary" onclick="saveShareLink('${shareId}')">Save Changes</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('editShareModal').style.display='none'">Cancel</button>
+    `;
+    
+    // Populate entities
+    const entityContainer = document.getElementById('editShareEntitySelect');
+    entityContainer.innerHTML = trackedEntities.map(entity => `
+        <div class="checkbox-item">
+            <label>
+                <input type="checkbox" value="${entity.entity_id}" 
+                       ${share.entity_ids.includes(entity.entity_id) ? 'checked' : ''}>
+                ${escapeHtml(entity.entity_id)}
+            </label>
+        </div>
+    `).join('');
+    
+    // Setup type change handler
+    document.getElementById('editShareType').addEventListener('change', updateEditShareOptions);
+    updateEditShareOptions();
+    
+    document.getElementById('editShareModal').style.display = 'block';
+}
+
+function updateEditShareOptions() {
+    const type = document.getElementById('editShareType').value;
+    const container = document.getElementById('editShareOptions');
+    
+    if (type === 'counter') {
+        container.innerHTML = `
+            <div class="form-group">
+                <label>Max Access Count:</label>
+                <input type="number" id="editMaxAccess" min="1" value="10" />
+            </div>
+        `;
+    } else if (type === 'time') {
+        container.innerHTML = `
+            <div class="form-group">
+                <label>Expires At:</label>
+                <input type="datetime-local" id="editExpiresAt" />
+            </div>
+        `;
+    } else {
+        container.innerHTML = '';
+    }
+}
+
+async function saveShareLink(shareId) {
+    const type = document.getElementById('editShareType').value;
+    const accessMode = document.getElementById('editAccessMode').value;
+    
+    // Get selected entities
+    const checkboxes = document.querySelectorAll('#editShareEntitySelect input[type="checkbox"]:checked');
+    const entityIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (entityIds.length === 0) {
+        showError('Please select at least one entity');
+        return;
+    }
+    
+    const data = {
+        entity_ids: entityIds,
+        type: type,
+        access_mode: accessMode
+    };
+    
+    if (type === 'counter') {
+        const maxAccess = parseInt(document.getElementById('editMaxAccess').value);
+        if (maxAccess < 1) {
+            showError('Max access must be at least 1');
+            return;
+        }
+        data.max_access = maxAccess;
+    } else if (type === 'time') {
+        const expiresAt = document.getElementById('editExpiresAt').value;
+        if (!expiresAt) {
+            showError('Please select an expiration date');
+            return;
+        }
+        data.expires_at = new Date(expiresAt).toISOString();
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/shares/${shareId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update share link');
+        }
+        
+        showSuccess('Share link updated successfully');
+        document.getElementById('editShareModal').style.display = 'none';
+        await loadShareLinks();
+    } catch (error) {
+        console.error('Error updating share link:', error);
+        showError('Failed to update share link: ' + error.message);
+    }
 }
 
 function updateShareEntitySelect() {
@@ -452,4 +696,178 @@ function showSuccess(message) {
     container.insertBefore(successDiv, container.firstChild);
     
     setTimeout(() => successDiv.remove(), 3000);
+}
+
+// Admin functions
+async function checkAdminStatus() {
+    isAdmin = localStorage.getItem('is_admin') === 'true';
+    if (isAdmin) {
+        showAdminPanel();
+    }
+}
+
+function showAdminPanel() {
+    const mainContent = document.querySelector('.main-content');
+    if (!mainContent) return;
+    
+    const adminPanel = document.createElement('section');
+    adminPanel.className = 'card';
+    adminPanel.id = 'adminPanel';
+    adminPanel.innerHTML = `
+        <h2>👨‍💼 Admin Panel</h2>
+        
+        <div class="admin-section">
+            <h3>User Management</h3>
+            <button class="btn btn-primary" onclick="showCreateUserModal()">Create New User</button>
+            <div id="usersList"></div>
+        </div>
+    `;
+    
+    mainContent.insertBefore(adminPanel, mainContent.firstChild);
+    loadAllUsers();
+}
+
+async function loadAllUsers() {
+    if (!isAdmin) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/users`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            return;
+        }
+        
+        if (!response.ok) throw new Error('Failed to load users');
+        
+        const users = await response.json();
+        renderUsersList(users);
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+function renderUsersList(users) {
+    const container = document.getElementById('usersList');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <table style="width: 100%; margin-top: 20px; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f5f5f5; text-align: left;">
+                    <th style="padding: 10px;">Username</th>
+                    <th style="padding: 10px;">Admin</th>
+                    <th style="padding: 10px;">Created</th>
+                    <th style="padding: 10px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(user => `
+                    <tr style="border-bottom: 1px solid #e0e0e0;">
+                        <td style="padding: 10px;">${escapeHtml(user.username)}</td>
+                        <td style="padding: 10px;">${user.is_admin ? '✅ Yes' : 'No'}</td>
+                        <td style="padding: 10px;">${new Date(user.created_at).toLocaleDateString()}</td>
+                        <td style="padding: 10px;">
+                            ${user.is_admin ? '' : `<button class="btn btn-danger" onclick="deleteUser(${user.id})">Delete</button>`}
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function showCreateUserModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+            <h2>Create New User</h2>
+            <div class="form-group">
+                <label>Username:</label>
+                <input type="text" id="newUsername" placeholder="Enter username" />
+            </div>
+            <button class="btn btn-primary" onclick="createNewUser()">Create User</button>
+            <div id="createUserResult"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function createNewUser() {
+    const username = document.getElementById('newUsername').value.trim();
+    if (!username) {
+        showError('Username is required');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/users`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ username })
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create user');
+        }
+        
+        const data = await response.json();
+        
+        const resultDiv = document.getElementById('createUserResult');
+        resultDiv.innerHTML = `
+            <div class="success-message" style="margin-top: 20px;">
+                <strong>User created successfully!</strong><br><br>
+                <strong>Username:</strong> ${escapeHtml(data.user.username)}<br>
+                <strong>Generated Password:</strong><br>
+                <div style="background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; word-break: break-all;">
+                    ${escapeHtml(data.generated_password)}
+                </div>
+                <strong>⚠️ Save this password! It cannot be recovered.</strong>
+            </div>
+        `;
+        
+        await loadAllUsers();
+    } catch (error) {
+        console.error('Error creating user:', error);
+        showError('Failed to create user: ' + error.message);
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Are you sure you want to delete this user? This will also delete all their entities and share links.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete user');
+        }
+        
+        showSuccess('User deleted successfully');
+        await loadAllUsers();
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        showError('Failed to delete user: ' + error.message);
+    }
 }

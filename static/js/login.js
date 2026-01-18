@@ -43,6 +43,7 @@ async function handleLogin(e) {
         // Store token and user info
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.user.username);
+        localStorage.setItem('is_admin', data.is_admin ? 'true' : 'false');
 
         // Check if password change or HA config is required
         if (data.require_password_change) {

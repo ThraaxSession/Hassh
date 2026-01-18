@@ -47,6 +47,15 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	// Check if OTP is enabled - require OTP verification
+	if user.OTPEnabled {
+		c.JSON(http.StatusOK, gin.H{
+			"otp_required": true,
+			"message":      "OTP verification required",
+		})
+		return
+	}
+
 	// Generate JWT token
 	token, err := auth.GenerateToken(user)
 	if err != nil {
@@ -60,6 +69,7 @@ func (h *Handler) Login(c *gin.Context) {
 		"is_admin":                user.IsAdmin,
 		"require_password_change": user.RequirePasswordChange,
 		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
+		"otp_required":            false,
 	})
 }
 
@@ -969,4 +979,190 @@ func generateID() string {
 	bytes := make([]byte, 16)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
+}
+
+// SetupOTP generates a new OTP secret and QR code for the user
+func (h *Handler) SetupOTP(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Generate OTP secret
+	secret, url, err := auth.GenerateOTPSecret(user.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate OTP secret"})
+		return
+	}
+
+	// Don't save yet - user needs to verify first
+	c.JSON(http.StatusOK, gin.H{
+		"secret": secret,
+		"url":    url,
+	})
+}
+
+// EnableOTP enables OTP for the user after verification
+func (h *Handler) EnableOTP(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var req struct {
+		Password string `json:"password" binding:"required"`
+		Secret   string `json:"secret" binding:"required"`
+		Code     string `json:"code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify password
+	if !auth.CheckPasswordHash(req.Password, user.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+		return
+	}
+
+	// Verify OTP code
+	if !auth.VerifyOTP(req.Secret, req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid OTP code"})
+		return
+	}
+
+	// Generate backup codes
+	backupCodes, err := auth.GenerateBackupCodes()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate backup codes"})
+		return
+	}
+
+	// Hash backup codes
+	hashedBackupCodes, err := auth.HashBackupCodes(backupCodes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash backup codes"})
+		return
+	}
+
+	// Save OTP secret and enable OTP
+	user.OTPSecret = req.Secret
+	user.OTPEnabled = true
+	user.OTPBackupCodes = hashedBackupCodes
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable OTP"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "OTP enabled successfully",
+		"backup_codes": backupCodes,
+	})
+}
+
+// DisableOTP disables OTP for the user
+func (h *Handler) DisableOTP(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Verify password
+	if !auth.CheckPasswordHash(req.Password, user.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+		return
+	}
+
+	// Disable OTP
+	user.OTPSecret = ""
+	user.OTPEnabled = false
+	user.OTPBackupCodes = ""
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable OTP"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "OTP disabled successfully"})
+}
+
+// VerifyOTP verifies an OTP code during login
+func (h *Handler) VerifyOTP(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+		Code     string `json:"code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate credentials
+	user, err := auth.ValidateCredentials(req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if OTP is enabled
+	if !user.OTPEnabled {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "OTP is not enabled for this user"})
+		return
+	}
+
+	// Verify OTP code or backup code
+	validOTP := auth.VerifyOTP(user.OTPSecret, req.Code)
+	validBackup := false
+	if !validOTP {
+		validBackup, err = auth.VerifyBackupCode(user, req.Code)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify backup code"})
+			return
+		}
+	}
+
+	if !validOTP && !validBackup {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid OTP code"})
+		return
+	}
+
+	// Generate JWT token
+	token, err := auth.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":                   token,
+		"user":                    user,
+		"is_admin":                user.IsAdmin,
+		"require_password_change": user.RequirePasswordChange,
+		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
+	})
 }

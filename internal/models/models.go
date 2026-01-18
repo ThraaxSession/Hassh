@@ -17,6 +17,9 @@ type User struct {
 	HAURL                 string    `json:"-"`                 // Home Assistant URL
 	IsAdmin               bool      `gorm:"default:false" json:"is_admin"`
 	RequirePasswordChange bool      `gorm:"default:false" json:"require_password_change"`
+	OTPSecret             string    `json:"-"`                                       // OTP secret (not exposed in JSON)
+	OTPEnabled            bool      `gorm:"default:false" json:"otp_enabled"`        // Whether OTP is enabled
+	OTPBackupCodes        string    `json:"-"`                                       // JSON array of hashed backup codes
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 }

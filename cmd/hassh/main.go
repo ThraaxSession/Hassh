@@ -79,6 +79,7 @@ func main() {
 	{
 		// Public endpoints
 		api.POST("/login", handler.Login)
+		api.POST("/verify-otp", handler.VerifyOTP)                       // OTP verification during login
 		api.POST("/register", handler.Register)                          // Public registration (only when no admin exists)
 		api.GET("/admin-exists", handler.AdminExists)                    // Check if admin exists
 		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access
@@ -92,6 +93,11 @@ func main() {
 			protected.GET("/settings", handler.GetUserSettings)
 			protected.POST("/settings/ha", handler.ConfigureHA)
 			protected.POST("/settings/password", handler.ChangePassword)
+
+			// OTP management
+			protected.POST("/otp/setup", handler.SetupOTP)
+			protected.POST("/otp/enable", handler.EnableOTP)
+			protected.POST("/otp/disable", handler.DisableOTP)
 
 			// User list (for sharing) - accessible to all authenticated users
 			protected.GET("/users/list", handler.GetUsersList)

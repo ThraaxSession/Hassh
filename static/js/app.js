@@ -327,19 +327,12 @@ function startAutoRefresh() {
     }, 30000); // Refresh every 30 seconds
 }
 
-// Utilities
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         showSuccess('Link copied to clipboard');
     }).catch(err => {
         showError('Failed to copy link');
     });
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 function showError(message) {

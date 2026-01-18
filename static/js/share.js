@@ -95,13 +95,6 @@ function startAutoRefresh() {
     }, 30000); // Refresh every 30 seconds
 }
 
-function escapeHtml(text) {
-    if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = String(text);
-    return div.innerHTML;
-}
-
 function showError(message) {
     const container = document.querySelector('.main-content');
     container.innerHTML = `

@@ -164,12 +164,13 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 		return
 	}
 
-	// Increment access count
+	// Increment access count and get entity IDs
 	shareLink.AccessCount++
+	entityIDs := shareLink.EntityIDs
 	h.mu.Unlock()
 
 	// Fetch current state of entities
-	entities, err := h.HAClient.GetEntities(shareLink.EntityIDs)
+	entities, err := h.HAClient.GetEntities(entityIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch entities"})
 		return

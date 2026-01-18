@@ -60,17 +60,33 @@ func (c *Client) GetEntity(entityID string) (*models.Entity, error) {
 	return &entity, nil
 }
 
-// GetEntities fetches multiple entities from Home Assistant
+// GetEntities fetches multiple entities from Home Assistant using concurrent requests
 func (c *Client) GetEntities(entityIDs []string) ([]*models.Entity, error) {
 	entities := make([]*models.Entity, 0, len(entityIDs))
 	
+	// Use a channel to collect results
+	type result struct {
+		entity *models.Entity
+		err    error
+	}
+	results := make(chan result, len(entityIDs))
+	
+	// Fetch entities concurrently
 	for _, entityID := range entityIDs {
-		entity, err := c.GetEntity(entityID)
-		if err != nil {
+		go func(id string) {
+			entity, err := c.GetEntity(id)
+			results <- result{entity: entity, err: err}
+		}(entityID)
+	}
+	
+	// Collect results
+	for i := 0; i < len(entityIDs); i++ {
+		res := <-results
+		if res.err != nil {
 			// Log error but continue with other entities
 			continue
 		}
-		entities = append(entities, entity)
+		entities = append(entities, res.entity)
 	}
 	
 	return entities, nil

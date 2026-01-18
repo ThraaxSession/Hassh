@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 
 	"github.com/ThraaxSession/Hash/internal/models"
 )
@@ -19,7 +20,9 @@ func Load() *models.Config {
 	
 	refreshInterval := 30 // default 30 seconds
 	if interval := os.Getenv("REFRESH_INTERVAL"); interval != "" {
-		// Could parse interval here
+		if parsed, err := strconv.Atoi(interval); err == nil && parsed > 0 {
+			refreshInterval = parsed
+		}
 	}
 
 	return &models.Config{

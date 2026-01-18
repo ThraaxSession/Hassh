@@ -91,8 +91,8 @@ function showOTPInput(username, password) {
     
     const otpFormHTML = `
         <div id="otpForm">
-            <h3 style="margin-bottom: 20px;">Enter Two-Factor Code</h3>
-            <p style="margin-bottom: 20px;">Enter the 6-digit code from your authenticator app or use a backup code.</p>
+            <h3 style="margin-bottom: 20px; color: var(--text-primary);">Enter Two-Factor Code</h3>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Enter the 6-digit code from your authenticator app or use a backup code.</p>
             <form id="otpVerifyForm" class="login-form">
                 <div class="form-group">
                     <label>Verification Code:</label>

@@ -188,7 +188,7 @@
                             <p>Scan this QR code with your authenticator app (e.g., Google Authenticator, Authy):</p>
                             <div id="qrCode"></div>
                             <p>Or manually enter this secret key:</p>
-                            <code id="otpSecret" style="display: block; padding: 10px; background: #f4f4f4; margin: 10px 0;"></code>
+                            <code id="otpSecret" style="display: block; padding: 10px; background: var(--bg-secondary); color: var(--text-primary); margin: 10px 0; border-radius: 6px; border: 1px solid var(--border-color);"></code>
                             
                             <form id="otpEnableForm">
                                 <div class="form-group">
@@ -208,7 +208,7 @@
                         <div id="backupCodesSection" style="display: none;">
                             <h4>Backup Codes</h4>
                             <p><strong>Important:</strong> Save these backup codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.</p>
-                            <div id="backupCodes" style="background: #f4f4f4; padding: 15px; margin: 10px 0; font-family: monospace;"></div>
+                            <div id="backupCodes" style="background: var(--bg-secondary); color: var(--text-primary); padding: 15px; margin: 10px 0; font-family: monospace; border-radius: 6px; border: 1px solid var(--border-color);"></div>
                             <button onclick="closeBackupCodes()" class="btn btn-primary">I've Saved My Codes</button>
                         </div>
                         

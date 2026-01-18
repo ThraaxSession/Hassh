@@ -42,13 +42,15 @@ func ValidateHAToken(haURL, token, username string) (*models.User, error) {
 		user = models.User{
 			Username: username,
 			HAToken:  token,
+			HAURL:    haURL,
 		}
 		if err := database.DB.Create(&user).Error; err != nil {
 			return nil, err
 		}
 	} else {
-		// Update token
+		// Update token and URL
 		user.HAToken = token
+		user.HAURL = haURL
 		if err := database.DB.Save(&user).Error; err != nil {
 			return nil, err
 		}

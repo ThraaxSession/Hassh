@@ -3,6 +3,7 @@ const API_BASE = '/api';
 
 // Get share ID from URL
 const shareId = window.location.pathname.split('/').pop();
+let accessMode = 'readonly';  // Will be set when data loads
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,15 +21,16 @@ async function loadSharedEntities() {
         }
         
         const data = await response.json();
-        renderShareInfo(data.share);
-        renderSharedEntities(data.entities);
+        accessMode = data.access_mode || 'readonly';
+        renderShareInfo(data.share, accessMode);
+        renderSharedEntities(data.entities, accessMode);
     } catch (error) {
         console.error('Error loading shared entities:', error);
         showError(error.message);
     }
 }
 
-function renderShareInfo(share) {
+function renderShareInfo(share, accessMode) {
     const container = document.getElementById('shareInfo');
     
     let details = '';
@@ -41,16 +43,18 @@ function renderShareInfo(share) {
         details = '<p>Permanent Share</p>';
     }
     
+    const accessModeLabel = accessMode === 'triggerable' ? '🎮 Triggerable' : '👁️ Read-Only';
+    
     container.innerHTML = `
         <h2>Shared Entities</h2>
         <div style="margin-bottom: 20px; color: #666;">
             ${details}
-            <p>Sharing ${share.entity_ids.length} entities</p>
+            <p>Sharing ${share.entity_ids.length} entities - ${accessModeLabel}</p>
         </div>
     `;
 }
 
-function renderSharedEntities(entities) {
+function renderSharedEntities(entities, accessMode) {
     const container = document.getElementById('sharedEntities');
     
     if (!entities || entities.length === 0) {
@@ -64,6 +68,33 @@ function renderSharedEntities(entities) {
             .slice(0, 5) // Show only first 5 attributes
             .map(([key, value]) => `<div>${escapeHtml(key)}: ${escapeHtml(String(value))}</div>`)
             .join('');
+        
+        // Add control buttons for triggerable shares
+        let controlButtons = '';
+        if (accessMode === 'triggerable') {
+            const domain = entity.entity_id.split('.')[0];
+            if (domain === 'light' || domain === 'switch') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerEntity('${entity.entity_id}', 'turn_on')" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;">Turn On</button>
+                        <button class="btn btn-secondary" onclick="triggerEntity('${entity.entity_id}', 'turn_off')" style="padding: 6px 12px; font-size: 12px;">Turn Off</button>
+                    </div>
+                `;
+            } else if (domain === 'cover') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerEntity('${entity.entity_id}', 'open_cover')" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;">Open</button>
+                        <button class="btn btn-secondary" onclick="triggerEntity('${entity.entity_id}', 'close_cover')" style="padding: 6px 12px; font-size: 12px;">Close</button>
+                    </div>
+                `;
+            } else if (domain === 'scene' || domain === 'script') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerEntity('${entity.entity_id}', 'turn_on')" style="padding: 6px 12px; font-size: 12px;">Activate</button>
+                    </div>
+                `;
+            }
+        }
         
         return `
             <div class="entity-item">
@@ -83,10 +114,32 @@ function renderSharedEntities(entities) {
                             Last updated: ${new Date(entity.last_updated).toLocaleString()}
                         </div>
                     ` : ''}
+                    ${controlButtons}
                 </div>
             </div>
         `;
     }).join('');
+}
+
+async function triggerEntity(entityId, service) {
+    try {
+        const response = await fetch(`${API_BASE}/shares/${shareId}/trigger/${entityId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ service: service })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to trigger entity');
+        }
+        
+        // Reload entities to show updated state
+        setTimeout(() => loadSharedEntities(), 500);
+    } catch (error) {
+        console.error('Error triggering entity:', error);
+        alert('Failed to trigger entity: ' + error.message);
+    }
 }
 
 function startAutoRefresh() {

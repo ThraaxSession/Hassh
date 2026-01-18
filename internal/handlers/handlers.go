@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ThraaxSession/Hash/internal/auth"
@@ -18,14 +19,12 @@ import (
 // Handler manages all HTTP handlers
 type Handler struct {
 	HAClient *ha.Client
-	HAURL    string
 }
 
 // NewHandler creates a new handler
-func NewHandler(haClient *ha.Client, haURL string) *Handler {
+func NewHandler(haClient *ha.Client) *Handler {
 	return &Handler{
 		HAClient: haClient,
-		HAURL:    haURL,
 	}
 }
 
@@ -89,8 +88,8 @@ func (h *Handler) AddEntity(c *gin.Context) {
 		return
 	}
 
-	// Create HA client with user's token
-	haClient := ha.NewClient(h.HAURL, user.HAToken)
+	// Create HA client with user's token and URL
+	haClient := ha.NewClient(user.HAURL, user.HAToken)
 
 	// Fetch the entity from Home Assistant
 	haEntity, err := haClient.GetEntity(req.EntityID)
@@ -154,10 +153,11 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var req struct {
-		EntityIDs []string  `json:"entity_ids" binding:"required"`
-		Type      string    `json:"type" binding:"required"` // "permanent", "counter", "time"
-		MaxAccess int       `json:"max_access,omitempty"`
-		ExpiresAt time.Time `json:"expires_at,omitempty"`
+		EntityIDs  []string  `json:"entity_ids" binding:"required"`
+		Type       string    `json:"type" binding:"required"` // "permanent", "counter", "time"
+		AccessMode string    `json:"access_mode"`             // "readonly", "triggerable"
+		MaxAccess  int       `json:"max_access,omitempty"`
+		ExpiresAt  time.Time `json:"expires_at,omitempty"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -168,6 +168,15 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 	// Validate type
 	if req.Type != "permanent" && req.Type != "counter" && req.Type != "time" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid type. Must be 'permanent', 'counter', or 'time'"})
+		return
+	}
+
+	// Validate access mode (default to readonly if not specified)
+	if req.AccessMode == "" {
+		req.AccessMode = "readonly"
+	}
+	if req.AccessMode != "readonly" && req.AccessMode != "triggerable" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid access_mode. Must be 'readonly' or 'triggerable'"})
 		return
 	}
 
@@ -185,6 +194,7 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 		ID:          id,
 		EntityIDs:   entityIDsJSON,
 		Type:        req.Type,
+		AccessMode:  req.AccessMode,
 		MaxAccess:   req.MaxAccess,
 		AccessCount: 0,
 		ExpiresAt:   req.ExpiresAt,
@@ -243,8 +253,8 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 		return
 	}
 
-	// Create HA client with user's token
-	haClient := ha.NewClient(h.HAURL, shareLink.User.HAToken)
+	// Create HA client with user's token and URL
+	haClient := ha.NewClient(shareLink.User.HAURL, shareLink.User.HAToken)
 
 	// Fetch current state of entities
 	entities, err := haClient.GetEntities(entityIDs)
@@ -254,8 +264,9 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"entities": entities,
-		"share":    shareLink,
+		"entities":    entities,
+		"share":       shareLink,
+		"access_mode": shareLink.AccessMode,
 	})
 }
 
@@ -308,8 +319,8 @@ func (h *Handler) RefreshEntities() error {
 			continue
 		}
 
-		// Create HA client with user's token
-		haClient := ha.NewClient(h.HAURL, user.HAToken)
+		// Create HA client with user's token and URL
+		haClient := ha.NewClient(user.HAURL, user.HAToken)
 
 		// Get entity IDs
 		entityIDs := make([]string, len(entities))
@@ -348,8 +359,8 @@ func (h *Handler) RefreshEntities() error {
 func (h *Handler) GetAllHAEntities(c *gin.Context) {
 	user := c.MustGet("user").(*models.User)
 
-	// Create HA client with user's token
-	haClient := ha.NewClient(h.HAURL, user.HAToken)
+	// Create HA client with user's token and URL
+	haClient := ha.NewClient(user.HAURL, user.HAToken)
 
 	entities, err := haClient.GetAllStates()
 	if err != nil {
@@ -358,6 +369,86 @@ func (h *Handler) GetAllHAEntities(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, entities)
+}
+
+// TriggerEntity triggers an entity through a share link (public endpoint with access control)
+func (h *Handler) TriggerEntity(c *gin.Context) {
+	shareID := c.Param("id")
+	entityID := c.Param("entityId")
+
+	var req struct {
+		Service string                 `json:"service" binding:"required"`
+		Data    map[string]interface{} `json:"data"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Load share link with user
+	var shareLink models.ShareLink
+	if err := database.DB.Preload("User").First(&shareLink, "id = ?", shareID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Share link not found"})
+		return
+	}
+
+	// Check if link is active
+	if !shareLink.Active {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Share link is no longer active"})
+		return
+	}
+
+	// Check access mode
+	if shareLink.AccessMode != "triggerable" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "This share link is read-only"})
+		return
+	}
+
+	// Check if entity is in the shared entity list
+	var entityIDs []string
+	if err := json.Unmarshal(shareLink.EntityIDs, &entityIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process entity IDs"})
+		return
+	}
+
+	found := false
+	for _, id := range entityIDs {
+		if id == entityID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Entity not included in this share"})
+		return
+	}
+
+	// Parse domain and service from entity_id (e.g., "light.living_room" -> domain: "light")
+	parts := strings.Split(entityID, ".")
+	if len(parts) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID format"})
+		return
+	}
+	domain := parts[0]
+
+	// Create HA client with share owner's token
+	haClient := ha.NewClient(shareLink.User.HAURL, shareLink.User.HAToken)
+
+	// Add entity_id to service data
+	if req.Data == nil {
+		req.Data = make(map[string]interface{})
+	}
+	req.Data["entity_id"] = entityID
+
+	// Call service
+	if err := haClient.CallService(domain, req.Service, req.Data); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to trigger entity: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Entity triggered successfully"})
 }
 
 func generateID() string {

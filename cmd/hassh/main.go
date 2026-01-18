@@ -41,7 +41,7 @@ func main() {
 	haClient := ha.NewClient(cfg.HomeAssistantURL, cfg.Token)
 
 	// Create handler
-	handler := handlers.NewHandler(haClient, cfg.HomeAssistantURL)
+	handler := handlers.NewHandler(haClient)
 
 	// Start refresh timer
 	go startRefreshTimer(handler, cfg.RefreshInterval)
@@ -71,7 +71,8 @@ func main() {
 	{
 		// Public endpoints
 		api.POST("/login", handler.Login)
-		api.GET("/shares/:id", handler.GetShareLink) // Public share link access
+		api.GET("/shares/:id", handler.GetShareLink)                   // Public share link access
+		api.POST("/shares/:id/trigger/:entityId", handler.TriggerEntity) // Public trigger for triggerable shares
 
 		// Protected endpoints (require authentication)
 		protected := api.Group("")

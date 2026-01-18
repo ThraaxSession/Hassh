@@ -271,9 +271,11 @@ async function createShareLink() {
     }
     
     const type = document.getElementById('shareType').value;
+    const accessMode = document.getElementById('accessMode').value;
     const data = {
         entity_ids: entityIds,
-        type: type
+        type: type,
+        access_mode: accessMode
     };
     
     if (type === 'counter') {
@@ -362,11 +364,15 @@ function renderShareLinks() {
             details = 'Permanent link';
         }
         
+        const accessModeBadge = link.access_mode === 'triggerable' ? 'badge-permanent' : 'badge-counter';
+        const accessModeText = link.access_mode === 'triggerable' ? 'Triggerable' : 'Read-Only';
+        
         return `
             <div class="share-item">
                 <div class="share-header">
                     <div>
                         <span class="badge ${typeBadge}">${link.type}</span>
+                        <span class="badge ${accessModeBadge}">${accessModeText}</span>
                         <span class="badge ${statusBadge}">${link.active ? 'Active' : 'Inactive'}</span>
                     </div>
                     <button class="btn btn-danger" onclick="deleteShareLink('${link.id}')">Delete</button>

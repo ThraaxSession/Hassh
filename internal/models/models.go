@@ -13,6 +13,7 @@ type User struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	Username  string    `gorm:"uniqueIndex;not null" json:"username"`
 	HAToken   string    `gorm:"not null" json:"-"` // Home Assistant Token (not exposed in JSON)
+	HAURL     string    `gorm:"not null" json:"-"` // Home Assistant URL
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -46,6 +47,7 @@ type ShareLink struct {
 	ID          string    `gorm:"primarykey" json:"id"`
 	EntityIDs   JSON      `json:"entity_ids"` // JSON array of entity IDs
 	Type        string    `json:"type"`       // "permanent", "counter", "time"
+	AccessMode  string    `json:"access_mode"` // "readonly", "triggerable"
 	MaxAccess   int       `json:"max_access,omitempty"`
 	AccessCount int       `json:"access_count"`
 	ExpiresAt   time.Time `json:"expires_at,omitempty"`

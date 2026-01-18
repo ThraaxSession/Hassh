@@ -71,10 +71,10 @@ async function handleLogin(e) {
 
         // Check if password change or HA config is required
         if (data.require_password_change) {
-            alert('Please change your password in Settings');
+            await Dialog.alert('Please change your password in Settings', 'Password Change Required', 'warning');
             window.location.href = '/settings';
         } else if (!data.has_ha_config) {
-            alert('Please configure your Home Assistant connection in Settings');
+            await Dialog.alert('Please configure your Home Assistant connection in Settings', 'Configuration Required', 'info');
             window.location.href = '/settings';
         } else {
             window.location.href = '/';
@@ -91,8 +91,8 @@ function showOTPInput(username, password) {
     
     const otpFormHTML = `
         <div id="otpForm">
-            <h3 style="margin-bottom: 20px;">Enter Two-Factor Code</h3>
-            <p style="margin-bottom: 20px;">Enter the 6-digit code from your authenticator app or use a backup code.</p>
+            <h3 style="margin-bottom: 20px; color: var(--text-primary);">Enter Two-Factor Code</h3>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Enter the 6-digit code from your authenticator app or use a backup code.</p>
             <form id="otpVerifyForm" class="login-form">
                 <div class="form-group">
                     <label>Verification Code:</label>
@@ -159,10 +159,10 @@ async function handleOTPVerify(e, username, password) {
 
         // Check if password change or HA config is required
         if (data.require_password_change) {
-            alert('Please change your password in Settings');
+            await Dialog.alert('Please change your password in Settings', 'Password Change Required', 'warning');
             window.location.href = '/settings';
         } else if (!data.has_ha_config) {
-            alert('Please configure your Home Assistant connection in Settings');
+            await Dialog.alert('Please configure your Home Assistant connection in Settings', 'Configuration Required', 'info');
             window.location.href = '/settings';
         } else {
             window.location.href = '/';

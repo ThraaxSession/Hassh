@@ -582,7 +582,7 @@ function editShareLink(shareId) {
             <div id="editShareModal" class="modal">
                 <div class="modal-content">
                     <span class="close" onclick="document.getElementById('editShareModal').style.display='none'">&times;</span>
-                    <h2>Edit Share Link</h2>
+                    <h2 style="color: var(--text-primary);">Edit Share Link</h2>
                     <div id="editShareContent"></div>
                 </div>
             </div>
@@ -805,11 +805,17 @@ function loadAdminPanel() {
     if (!adminPanel) return;
     
     adminPanel.innerHTML = `
-        <h2>👨‍💼 Admin Panel</h2>
+        <div class="section-header">
+            <h2>👨‍💼 Admin Panel</h2>
+            <div class="section-actions">
+                <button class="btn btn-primary" onclick="showCreateUserModal()">
+                    <span style="margin-right: 5px;">➕</span> Create New User
+                </button>
+            </div>
+        </div>
         
         <div class="admin-section">
             <h3>User Management</h3>
-            <button class="btn btn-primary" onclick="showCreateUserModal()">Create New User</button>
             <div id="usersList"></div>
         </div>
     `;
@@ -889,28 +895,34 @@ function renderUsersList(users) {
     if (!container) return;
     
     container.innerHTML = `
-        <table style="width: 100%; margin-top: 20px; border-collapse: collapse;">
+        <table class="modern-table">
             <thead>
-                <tr style="background: #f5f5f5; text-align: left;">
-                    <th style="padding: 10px;">Username</th>
-                    <th style="padding: 10px;">Admin</th>
-                    <th style="padding: 10px;">Created</th>
-                    <th style="padding: 10px;">Actions</th>
+                <tr>
+                    <th>Username</th>
+                    <th>Admin Status</th>
+                    <th>Created Date</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 ${users.map(user => `
-                    <tr style="border-bottom: 1px solid #e0e0e0;">
-                        <td style="padding: 10px;">${escapeHtml(user.username)}</td>
-                        <td style="padding: 10px;">
+                    <tr>
+                        <td>
+                            <span style="font-weight: 600;">${escapeHtml(user.username)}</span>
+                        </td>
+                        <td>
                             <label class="switch">
                                 <input type="checkbox" ${user.is_admin ? 'checked' : ''} onchange="toggleUserAdmin(${user.id}, this.checked)">
                                 <span class="slider round"></span>
                             </label>
                         </td>
-                        <td style="padding: 10px;">${new Date(user.created_at).toLocaleDateString()}</td>
-                        <td style="padding: 10px;">
-                            <button class="btn btn-danger" onclick="deleteUser(${user.id})" ${user.is_admin ? 'disabled' : ''}>Delete</button>
+                        <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-danger" onclick="deleteUser(${user.id})" ${user.is_admin ? 'disabled' : ''}>
+                                    🗑️ Delete
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `).join('')}

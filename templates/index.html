@@ -27,18 +27,20 @@
             <!-- Entity Management Section -->
             <section id="section-entities" class="content-section active">
                 <div class="card">
-                    <h2>Entity Management</h2>
+                    <div class="section-header">
+                        <h2>📊 Entity Management</h2>
+                    </div>
                     
-                    <div class="add-entity-form">
+                    <div class="admin-section">
                         <h3>Add Entity to Track</h3>
                         <div class="form-row">
-                            <button id="browseEntitiesBtn" class="btn btn-secondary">Browse Entities</button>
+                            <button id="browseEntitiesBtn" class="btn btn-secondary">📋 Browse Entities</button>
                             <input type="text" id="entityIdInput" placeholder="Enter entity ID (e.g., light.living_room)" />
-                            <button id="addEntityBtn" class="btn btn-primary">Add Entity</button>
+                            <button id="addEntityBtn" class="btn btn-primary">➕ Add Entity</button>
                         </div>
                     </div>
 
-                    <div class="entity-list">
+                    <div class="admin-section">
                         <h3>Tracked Entities</h3>
                         <div id="entitiesList"></div>
                     </div>
@@ -48,9 +50,11 @@
             <!-- Share Link Management Section -->
             <section id="section-shares" class="content-section">
                 <div class="card">
-                    <h2>Share Links</h2>
+                    <div class="section-header">
+                        <h2>🔗 Share Links</h2>
+                    </div>
                     
-                    <div class="create-share-form">
+                    <div class="admin-section">
                         <h3>Create New Share Link</h3>
                         <div class="form-group">
                             <label>Select Entities to Share:</label>
@@ -92,10 +96,10 @@
                             <input type="datetime-local" id="expiresAt" />
                         </div>
 
-                        <button id="createShareBtn" class="btn btn-primary">Create Share Link</button>
+                        <button id="createShareBtn" class="btn btn-primary">➕ Create Share Link</button>
                     </div>
 
-                    <div class="share-list">
+                    <div class="admin-section">
                         <h3>Active Share Links</h3>
                         <div id="sharesList"></div>
                     </div>
@@ -105,7 +109,9 @@
             <!-- Shared With Me Section -->
             <section id="section-shared-with-me" class="content-section">
                 <div class="card">
-                    <h2>Entities Shared With You</h2>
+                    <div class="section-header">
+                        <h2>📥 Entities Shared With You</h2>
+                    </div>
                     <p class="subtitle">View entities that other users have shared with you</p>
                     <div id="sharedWithMeList"></div>
                 </div>
@@ -114,7 +120,9 @@
             <!-- My Shared Entities Section -->
             <section id="section-my-shared-entities" class="content-section">
                 <div class="card">
-                    <h2>My Shared Entities</h2>
+                    <div class="section-header">
+                        <h2>📤 My Shared Entities</h2>
+                    </div>
                     <p class="subtitle">Entities you have shared with other users</p>
                     <div id="mySharedEntitiesList"></div>
                 </div>
@@ -123,9 +131,11 @@
             <!-- Settings Section -->
             <section id="section-settings" class="content-section">
                 <div class="card">
-                    <h2>Account Settings</h2>
+                    <div class="section-header">
+                        <h2>⚙️ Account Settings</h2>
+                    </div>
                     
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Change Password</h3>
                         <form id="passwordForm">
                             <div class="form-group">
@@ -140,11 +150,11 @@
                                 <label>Confirm New Password:</label>
                                 <input type="password" id="confirmPassword" autocomplete="new-password" required />
                             </div>
-                            <button type="submit" class="btn btn-primary">Change Password</button>
+                            <button type="submit" class="btn btn-primary">🔒 Change Password</button>
                         </form>
                     </div>
 
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Home Assistant Configuration</h3>
                         <form id="haConfigForm">
                             <div class="form-group">
@@ -155,12 +165,12 @@
                                 <label>Long-Lived Access Token:</label>
                                 <input type="password" id="haToken" placeholder="Enter your long-lived access token" required />
                             </div>
-                            <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            <button type="submit" class="btn btn-primary">💾 Save Configuration</button>
                         </form>
                         <div id="haConfigStatus"></div>
                     </div>
 
-                    <div class="card" style="margin: 20px 0;">
+                    <div class="admin-section">
                         <h3>Two-Factor Authentication (OTP)</h3>
                         <div id="otpStatus">
                             <p>Loading OTP status...</p>
@@ -168,17 +178,17 @@
                         
                         <!-- Enable OTP Section -->
                         <div id="otpEnableSection" style="display: none;">
-                            <p>Two-factor authentication adds an extra layer of security to your account.</p>
+                            <p style="color: var(--text-secondary); margin-bottom: 15px;">Two-factor authentication adds an extra layer of security to your account.</p>
                             <button onclick="setupOTP()" class="btn btn-primary">Enable 2FA</button>
                         </div>
                         
                         <!-- OTP Setup Section -->
                         <div id="otpSetupSection" style="display: none;">
-                            <h4>Setup Two-Factor Authentication</h4>
-                            <p>Scan this QR code with your authenticator app (e.g., Google Authenticator, Authy):</p>
-                            <div id="qrCode"></div>
-                            <p>Or manually enter this secret key:</p>
-                            <code id="otpSecret" style="display: block; padding: 10px; background: #f4f4f4; margin: 10px 0;"></code>
+                            <h4 style="color: var(--text-primary); margin-bottom: 15px;">Setup Two-Factor Authentication</h4>
+                            <p style="color: var(--text-secondary); margin-bottom: 15px;">Scan this QR code with your authenticator app (e.g., Google Authenticator, Authy):</p>
+                            <div id="qrCode" style="margin-bottom: 15px;"></div>
+                            <p style="color: var(--text-secondary); margin-bottom: 10px;">Or manually enter this secret key:</p>
+                            <code id="otpSecret" style="display: block; padding: 10px; background: var(--bg-secondary); color: var(--text-primary); margin: 10px 0 20px 0; border-radius: 6px; border: 1px solid var(--border-color);"></code>
                             
                             <form id="otpEnableForm">
                                 <div class="form-group">
@@ -198,13 +208,15 @@
                         <div id="backupCodesSection" style="display: none;">
                             <h4>Backup Codes</h4>
                             <p><strong>Important:</strong> Save these backup codes in a safe place. Each code can be used once to access your account if you lose your authenticator device.</p>
-                            <div id="backupCodes" style="background: #f4f4f4; padding: 15px; margin: 10px 0; font-family: monospace;"></div>
+                            <div id="backupCodes" style="background: var(--bg-secondary); color: var(--text-primary); padding: 15px; margin: 10px 0; font-family: monospace; border-radius: 6px; border: 1px solid var(--border-color);"></div>
                             <button onclick="closeBackupCodes()" class="btn btn-primary">I've Saved My Codes</button>
                         </div>
                         
                         <!-- Disable OTP Section -->
                         <div id="otpDisableSection" style="display: none;">
-                            <p><strong>Two-factor authentication is enabled.</strong></p>
+                            <div class="success-message">
+                                ✅ Two-factor authentication is enabled.
+                            </div>
                             <button onclick="disableOTP()" class="btn btn-danger">Disable 2FA</button>
                         </div>
                         
@@ -245,6 +257,7 @@
     </div>
 
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/ui.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

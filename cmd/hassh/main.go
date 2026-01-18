@@ -63,7 +63,8 @@ func main() {
 	})
 
 	r.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "register.html", nil)
+		// Redirect to login - no public registration
+		c.Redirect(http.StatusMovedPermanently, "/login")
 	})
 
 	r.GET("/settings", func(c *gin.Context) {
@@ -79,7 +80,6 @@ func main() {
 	{
 		// Public endpoints
 		api.POST("/login", handler.Login)
-		api.POST("/register", handler.Register)
 		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access
 		api.POST("/shares/:id/trigger/:entityId", handler.TriggerEntity) // Public trigger for triggerable shares
 

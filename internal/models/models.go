@@ -24,12 +24,12 @@ type User struct {
 // SharedEntity represents an entity shared with another user
 type SharedEntity struct {
 	ID         uint      `gorm:"primarykey" json:"id"`
-	EntityID   string    `gorm:"not null" json:"entity_id"`
-	OwnerID    uint      `gorm:"not null" json:"owner_id"`
-	Owner      User      `gorm:"foreignKey:OwnerID" json:"owner"`
-	SharedWith uint      `gorm:"not null" json:"shared_with_id"`
-	SharedUser User      `gorm:"foreignKey:SharedWith" json:"shared_user"`
-	AccessMode string    `gorm:"default:readonly" json:"access_mode"` // "readonly", "triggerable"
+	EntityID   string    `gorm:"not null" json:"EntityID"`
+	OwnerID    uint      `gorm:"not null" json:"OwnerID"`
+	Owner      User      `gorm:"foreignKey:OwnerID" json:"Owner"`
+	SharedWith uint      `gorm:"not null" json:"SharedWith"`
+	SharedUser User      `gorm:"foreignKey:SharedWith" json:"SharedUser"`
+	AccessMode string    `gorm:"default:readonly" json:"AccessMode"` // "readonly", "triggerable"
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }

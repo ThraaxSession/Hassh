@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hassh - Home Assistant Share</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Hassh - Home Assistant Share</h1>
+            <p class="subtitle">Share your Home Assistant entities with friends and family</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Entity Management Section -->
+            <section class="card">
+                <h2>Entity Management</h2>
+                
+                <div class="add-entity-form">
+                    <h3>Add Entity to Track</h3>
+                    <div class="form-row">
+                        <button id="browseEntitiesBtn" class="btn btn-secondary">Browse Entities</button>
+                        <input type="text" id="entityIdInput" placeholder="Enter entity ID (e.g., light.living_room)" />
+                        <button id="addEntityBtn" class="btn btn-primary">Add Entity</button>
+                    </div>
+                </div>
+
+                <div class="entity-list">
+                    <h3>Tracked Entities</h3>
+                    <div id="entitiesList"></div>
+                </div>
+            </section>
+
+            <!-- Share Link Management Section -->
+            <section class="card">
+                <h2>Share Links</h2>
+                
+                <div class="create-share-form">
+                    <h3>Create New Share Link</h3>
+                    <div class="form-group">
+                        <label>Select Entities to Share:</label>
+                        <div id="shareEntitySelect"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Link Type:</label>
+                        <select id="shareType">
+                            <option value="permanent">Permanent</option>
+                            <option value="counter">Limited Access Count</option>
+                            <option value="time">Time-Limited</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="maxAccessGroup" style="display: none;">
+                        <label>Max Access Count:</label>
+                        <input type="number" id="maxAccess" min="1" value="10" />
+                    </div>
+
+                    <div class="form-group" id="expiresAtGroup" style="display: none;">
+                        <label>Expires At:</label>
+                        <input type="datetime-local" id="expiresAt" />
+                    </div>
+
+                    <button id="createShareBtn" class="btn btn-primary">Create Share Link</button>
+                </div>
+
+                <div class="share-list">
+                    <h3>Active Share Links</h3>
+                    <div id="sharesList"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Browse Entities Modal -->
+        <div id="browseModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Browse Home Assistant Entities</h2>
+                <div class="search-box">
+                    <input type="text" id="entitySearch" placeholder="Search entities..." />
+                </div>
+                <div id="allEntitiesList" class="entities-browser"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -387,8 +387,8 @@ input:focus {
 .btn-danger {
     background: var(--gradient-danger);
     color: white;
-    padding: 8px 16px;
-    font-size: 12px;
+    padding: 12px 24px;
+    font-size: 14px;
     box-shadow: 0 4px 12px rgba(235, 51, 73, 0.3);
 }
 
@@ -400,8 +400,8 @@ input:focus {
 .btn-copy {
     background: var(--gradient-success);
     color: white;
-    padding: 8px 16px;
-    font-size: 12px;
+    padding: 12px 24px;
+    font-size: 14px;
     margin-left: 10px;
     box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
 }

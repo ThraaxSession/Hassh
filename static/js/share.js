@@ -73,18 +73,29 @@ function renderSharedEntities(entities, accessMode) {
         let controlButtons = '';
         if (accessMode === 'triggerable') {
             const domain = entity.entity_id.split('.')[0];
+            const isOn = entity.state === 'on' || entity.state === 'open';
+            
             if (domain === 'light' || domain === 'switch') {
                 controlButtons = `
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="triggerEntity('${entity.entity_id}', 'turn_on')" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;">Turn On</button>
-                        <button class="btn btn-secondary" onclick="triggerEntity('${entity.entity_id}', 'turn_off')" style="padding: 6px 12px; font-size: 12px;">Turn Off</button>
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 13px; color: #666;">Control:</span>
+                        <label class="switch">
+                            <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleEntity('${entity.entity_id}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; color: #666;">${isOn ? 'On' : 'Off'}</span>
                     </div>
                 `;
             } else if (domain === 'cover') {
+                const isOpen = entity.state === 'open';
                 controlButtons = `
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="triggerEntity('${entity.entity_id}', 'open_cover')" style="padding: 6px 12px; font-size: 12px; margin-right: 5px;">Open</button>
-                        <button class="btn btn-secondary" onclick="triggerEntity('${entity.entity_id}', 'close_cover')" style="padding: 6px 12px; font-size: 12px;">Close</button>
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 13px; color: #666;">Control:</span>
+                        <label class="switch">
+                            <input type="checkbox" ${isOpen ? 'checked' : ''} onchange="toggleCover('${entity.entity_id}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; color: #666;">${isOpen ? 'Open' : 'Closed'}</span>
                     </div>
                 `;
             } else if (domain === 'scene' || domain === 'script') {
@@ -140,6 +151,16 @@ async function triggerEntity(entityId, service) {
         console.error('Error triggering entity:', error);
         alert('Failed to trigger entity: ' + error.message);
     }
+}
+
+async function toggleEntity(entityId, isOn) {
+    const service = isOn ? 'turn_on' : 'turn_off';
+    await triggerEntity(entityId, service);
+}
+
+async function toggleCover(entityId, isOpen) {
+    const service = isOpen ? 'open_cover' : 'close_cover';
+    await triggerEntity(entityId, service);
 }
 
 function startAutoRefresh() {

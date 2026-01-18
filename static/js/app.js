@@ -7,6 +7,7 @@ let allHAEntities = [];
 let shareLinks = [];
 let authToken = '';
 let isAdmin = false;
+let allUsers = [];
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadShareLinks();
     startAutoRefresh();
     checkAdminStatus();
+    loadAllUsers();
 });
 
 // Check if user is authenticated
@@ -361,6 +363,50 @@ async function createShareLink() {
     
     const type = document.getElementById('shareType').value;
     const accessMode = document.getElementById('accessMode').value;
+    
+    // Handle user-to-user sharing differently
+    if (type === 'user') {
+        const targetUserId = document.getElementById('targetUser').value;
+        if (!targetUserId) {
+            showError('Please select a user to share with');
+            return;
+        }
+        
+        try {
+            // Share each entity with the selected user
+            for (const entityId of entityIds) {
+                const response = await fetch(`${API_BASE}/share-entity`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        entity_id: entityId,
+                        shared_with_id: parseInt(targetUserId),
+                        access_mode: accessMode
+                    })
+                });
+                
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to share entity');
+                }
+            }
+            
+            showSuccess(`Successfully shared ${entityIds.length} entities with user`);
+            entityCheckboxes.forEach(cb => cb.checked = false);
+            return;
+        } catch (error) {
+            console.error('Error sharing entities:', error);
+            showError('Failed to share entities: ' + error.message);
+            return;
+        }
+    }
+    
+    // Handle link-based sharing
     const data = {
         entity_ids: entityIds,
         type: type,
@@ -658,9 +704,11 @@ function handleShareTypeChange() {
     const type = document.getElementById('shareType').value;
     const maxAccessGroup = document.getElementById('maxAccessGroup');
     const expiresAtGroup = document.getElementById('expiresAtGroup');
+    const targetUserGroup = document.getElementById('targetUserGroup');
     
     maxAccessGroup.style.display = type === 'counter' ? 'block' : 'none';
     expiresAtGroup.style.display = type === 'time' ? 'block' : 'none';
+    targetUserGroup.style.display = type === 'user' ? 'block' : 'none';
 }
 
 // Auto-refresh
@@ -742,10 +790,24 @@ async function loadAllUsers() {
         if (!response.ok) throw new Error('Failed to load users');
         
         const users = await response.json();
+        allUsers = users;
         renderUsersList(users);
+        populateUserDropdown(users);
     } catch (error) {
         console.error('Error loading users:', error);
     }
+}
+
+function populateUserDropdown(users) {
+    const dropdown = document.getElementById('targetUser');
+    if (!dropdown) return;
+    
+    const currentUsername = localStorage.getItem('username');
+    dropdown.innerHTML = '<option value="">Select a user...</option>' + 
+        users
+            .filter(user => user.username !== currentUsername)
+            .map(user => `<option value="${user.id}">${escapeHtml(user.username)}</option>`)
+            .join('');
 }
 
 function renderUsersList(users) {
@@ -766,10 +828,15 @@ function renderUsersList(users) {
                 ${users.map(user => `
                     <tr style="border-bottom: 1px solid #e0e0e0;">
                         <td style="padding: 10px;">${escapeHtml(user.username)}</td>
-                        <td style="padding: 10px;">${user.is_admin ? '✅ Yes' : 'No'}</td>
+                        <td style="padding: 10px;">
+                            <label class="switch">
+                                <input type="checkbox" ${user.is_admin ? 'checked' : ''} onchange="toggleUserAdmin(${user.id}, this.checked)">
+                                <span class="slider round"></span>
+                            </label>
+                        </td>
                         <td style="padding: 10px;">${new Date(user.created_at).toLocaleDateString()}</td>
                         <td style="padding: 10px;">
-                            ${user.is_admin ? '' : `<button class="btn btn-danger" onclick="deleteUser(${user.id})">Delete</button>`}
+                            <button class="btn btn-danger" onclick="deleteUser(${user.id})" ${user.is_admin ? 'disabled' : ''}>Delete</button>
                         </td>
                     </tr>
                 `).join('')}
@@ -869,5 +936,33 @@ async function deleteUser(userId) {
     } catch (error) {
         console.error('Error deleting user:', error);
         showError('Failed to delete user: ' + error.message);
+    }
+}
+
+async function toggleUserAdmin(userId, isAdmin) {
+    try {
+        const response = await fetch(`${API_BASE}/users/${userId}/admin`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ is_admin: isAdmin })
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update admin status');
+        }
+        
+        showSuccess(`User admin status updated successfully`);
+        await loadAllUsers();
+    } catch (error) {
+        console.error('Error updating admin status:', error);
+        showError('Failed to update admin status: ' + error.message);
+        // Reload to revert the checkbox state
+        await loadAllUsers();
     }
 }

@@ -50,6 +50,7 @@
                             <option value="permanent">Permanent</option>
                             <option value="counter">Limited Access Count</option>
                             <option value="time">Time-Limited</option>
+                            <option value="user">Share with User</option>
                         </select>
                     </div>
 
@@ -58,6 +59,13 @@
                         <select id="accessMode">
                             <option value="readonly">Read-Only (view state only)</option>
                             <option value="triggerable">Triggerable (can control entities)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="targetUserGroup" style="display: none;">
+                        <label>Share with User:</label>
+                        <select id="targetUser">
+                            <option value="">Select a user...</option>
                         </select>
                     </div>
 

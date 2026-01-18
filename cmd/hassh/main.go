@@ -117,6 +117,7 @@ func main() {
 				admin.GET("/users", handler.ListAllUsers)
 				admin.POST("/users", handler.CreateUserByAdmin)
 				admin.DELETE("/users/:id", handler.DeleteUser)
+				admin.PUT("/users/:id/admin", handler.ToggleUserAdmin)
 			}
 		}
 	}

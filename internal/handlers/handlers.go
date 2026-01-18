@@ -680,6 +680,54 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
+// ToggleUserAdmin toggles admin status for a user (admin only)
+func (h *Handler) ToggleUserAdmin(c *gin.Context) {
+	userIDStr := c.Param("id")
+	var userID uint
+	if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req struct {
+		IsAdmin bool `json:"is_admin" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get user
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// If removing admin status, check if they're the last admin
+	if !req.IsAdmin && user.IsAdmin {
+		var adminCount int64
+		database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&adminCount)
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot remove admin status from the last admin user"})
+			return
+		}
+	}
+
+	// Update admin status
+	user.IsAdmin = req.IsAdmin
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "User admin status updated successfully",
+		"user":    user,
+	})
+}
+
 // Entity sharing endpoints
 
 // ShareEntityWithUser shares an entity with another user

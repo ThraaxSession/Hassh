@@ -92,6 +92,9 @@ func main() {
 			protected.POST("/settings/ha", handler.ConfigureHA)
 			protected.POST("/settings/password", handler.ChangePassword)
 
+			// User list (for sharing) - accessible to all authenticated users
+			protected.GET("/users/list", handler.GetUsersList)
+
 			// Entity management
 			protected.GET("/entities", handler.GetEntities)
 			protected.POST("/entities", handler.AddEntity)

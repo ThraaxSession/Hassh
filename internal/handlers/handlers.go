@@ -615,6 +615,31 @@ func (h *Handler) ListAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// GetUsersList returns basic user info for sharing (accessible to all authenticated users)
+func (h *Handler) GetUsersList(c *gin.Context) {
+	var users []models.User
+	if err := database.DB.Select("id", "username").Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
+	// Return minimal info needed for sharing
+	type UserInfo struct {
+		ID       uint   `json:"id"`
+		Username string `json:"username"`
+	}
+	
+	userList := make([]UserInfo, len(users))
+	for i, user := range users {
+		userList[i] = UserInfo{
+			ID:       user.ID,
+			Username: user.Username,
+		}
+	}
+
+	c.JSON(http.StatusOK, userList)
+}
+
 // CreateUserByAdmin creates a new user (admin only)
 func (h *Handler) CreateUserByAdmin(c *gin.Context) {
 	var req struct {

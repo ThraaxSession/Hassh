@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"strconv"
@@ -25,12 +27,32 @@ func Load() *models.Config {
 		}
 	}
 
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "hassh.db"
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		// Generate a random secret if not provided
+		jwtSecret = generateRandomSecret()
+	}
+
 	return &models.Config{
 		HomeAssistantURL: haURL,
 		Token:            token,
 		Port:             port,
 		RefreshInterval:  refreshInterval,
+		DBPath:           dbPath,
+		JWTSecret:        jwtSecret,
 	}
+}
+
+// generateRandomSecret generates a random secret key
+func generateRandomSecret() string {
+	bytes := make([]byte, 32)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
 }
 
 // LoadFromFile loads configuration from a JSON file

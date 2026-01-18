@@ -5,14 +5,60 @@ const API_BASE = '/api';
 let trackedEntities = [];
 let allHAEntities = [];
 let shareLinks = [];
+let authToken = '';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    checkAuth();
     setupEventListeners();
     loadEntities();
     loadShareLinks();
     startAutoRefresh();
 });
+
+// Check if user is authenticated
+function checkAuth() {
+    authToken = localStorage.getItem('token');
+    if (!authToken) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Display username
+    const username = localStorage.getItem('username');
+    if (username) {
+        displayUsername(username);
+    }
+}
+
+// Display username in header
+function displayUsername(username) {
+    const header = document.querySelector('header');
+    const logoutBtn = document.createElement('div');
+    logoutBtn.style.cssText = 'position: absolute; top: 20px; right: 20px;';
+    logoutBtn.innerHTML = `
+        <span style="color: white; margin-right: 15px;">👤 ${escapeHtml(username)}</span>
+        <button onclick="logout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
+    `;
+    header.style.position = 'relative';
+    header.appendChild(logoutBtn);
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('haUrl');
+    window.location.href = '/login';
+}
+
+// Get auth headers
+function getAuthHeaders() {
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+    };
+}
 
 function setupEventListeners() {
     document.getElementById('addEntityBtn').addEventListener('click', addEntity);
@@ -39,7 +85,15 @@ function setupEventListeners() {
 // Entity Management
 async function loadEntities() {
     try {
-        const response = await fetch(`${API_BASE}/entities`);
+        const response = await fetch(`${API_BASE}/entities`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
         if (!response.ok) throw new Error('Failed to load entities');
         
         trackedEntities = await response.json();
@@ -61,7 +115,14 @@ async function addEntity() {
     try {
         const response = await fetch(`${API_BASE}/entities`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ entity_id: entityId })
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
             body: JSON.stringify({ entity_id: entityId })
         });
         
@@ -84,8 +145,14 @@ async function deleteEntity(entityId) {
     
     try {
         const response = await fetch(`${API_BASE}/entities/${entityId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
         
         if (!response.ok) throw new Error('Failed to delete entity');
         
@@ -123,7 +190,15 @@ async function showBrowseModal() {
     
     if (allHAEntities.length === 0) {
         try {
-            const response = await fetch(`${API_BASE}/ha/entities`);
+            const response = await fetch(`${API_BASE}/ha/entities`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.status === 401) {
+                logout();
+                return;
+            }
+            
             if (!response.ok) throw new Error('Failed to load Home Assistant entities');
             
             allHAEntities = await response.json();
@@ -169,7 +244,15 @@ function selectEntity(entityId) {
 // Share Link Management
 async function loadShareLinks() {
     try {
-        const response = await fetch(`${API_BASE}/shares`);
+        const response = await fetch(`${API_BASE}/shares`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
         if (!response.ok) throw new Error('Failed to load share links');
         
         shareLinks = await response.json();
@@ -209,9 +292,14 @@ async function createShareLink() {
     try {
         const response = await fetch(`${API_BASE}/shares`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify(data)
         });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
         
         if (!response.ok) {
             const error = await response.json();
@@ -234,8 +322,14 @@ async function deleteShareLink(shareId) {
     
     try {
         const response = await fetch(`${API_BASE}/shares/${shareId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
         
         if (!response.ok) throw new Error('Failed to delete share link');
         

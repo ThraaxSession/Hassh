@@ -9,9 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ThraaxSession/Hash/internal/auth"
 	"github.com/ThraaxSession/Hash/internal/config"
+	"github.com/ThraaxSession/Hash/internal/database"
 	"github.com/ThraaxSession/Hash/internal/ha"
 	"github.com/ThraaxSession/Hash/internal/handlers"
+	"github.com/ThraaxSession/Hash/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,17 +22,26 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
+	// Initialize database
+	if err := database.Initialize(cfg.DBPath); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	// Set JWT secret
+	auth.SetJWTSecret(cfg.JWTSecret)
+
 	// Validate configuration
-	if cfg.HomeAssistantURL == "" || cfg.Token == "" {
-		log.Println("Warning: HOME_ASSISTANT_URL and HA_TOKEN environment variables should be set")
-		log.Println("You can set them later through the configuration endpoint")
+	if cfg.HomeAssistantURL == "" {
+		log.Println("Warning: HOME_ASSISTANT_URL environment variable should be set")
+		log.Println("Users will need to provide it during login")
 	}
 
-	// Create Home Assistant client
+	// Create Home Assistant client (for refresh timer, will use user tokens for actual requests)
 	haClient := ha.NewClient(cfg.HomeAssistantURL, cfg.Token)
 
 	// Create handler
-	handler := handlers.NewHandler(haClient)
+	handler := handlers.NewHandler(haClient, cfg.HomeAssistantURL)
 
 	// Start refresh timer
 	go startRefreshTimer(handler, cfg.RefreshInterval)
@@ -41,9 +53,13 @@ func main() {
 	r.Static("/static", "./static")
 	r.LoadHTMLGlob("templates/*")
 
-	// Routes
+	// Public routes
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
+	})
+
+	r.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.html", nil)
 	})
 
 	r.GET("/share/:id", func(c *gin.Context) {
@@ -53,17 +69,25 @@ func main() {
 	// API routes
 	api := r.Group("/api")
 	{
-		// Entity management
-		api.GET("/entities", handler.GetEntities)
-		api.POST("/entities", handler.AddEntity)
-		api.DELETE("/entities/:id", handler.DeleteEntity)
-		api.GET("/ha/entities", handler.GetAllHAEntities)
+		// Public endpoints
+		api.POST("/login", handler.Login)
+		api.GET("/shares/:id", handler.GetShareLink) // Public share link access
 
-		// Share link management
-		api.POST("/shares", handler.CreateShareLink)
-		api.GET("/shares", handler.ListShareLinks)
-		api.GET("/shares/:id", handler.GetShareLink)
-		api.DELETE("/shares/:id", handler.DeleteShareLink)
+		// Protected endpoints (require authentication)
+		protected := api.Group("")
+		protected.Use(middleware.AuthMiddleware())
+		{
+			// Entity management
+			protected.GET("/entities", handler.GetEntities)
+			protected.POST("/entities", handler.AddEntity)
+			protected.DELETE("/entities/:id", handler.DeleteEntity)
+			protected.GET("/ha/entities", handler.GetAllHAEntities)
+
+			// Share link management
+			protected.POST("/shares", handler.CreateShareLink)
+			protected.GET("/shares", handler.ListShareLinks)
+			protected.DELETE("/shares/:id", handler.DeleteShareLink)
+		}
 	}
 
 	// Create server
@@ -75,6 +99,7 @@ func main() {
 	// Start server in a goroutine
 	go func() {
 		log.Printf("Starting Hassh server on port %s", cfg.Port)
+		log.Printf("Database: %s", cfg.DBPath)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

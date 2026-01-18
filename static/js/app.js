@@ -1315,7 +1315,7 @@ async function renderMySharedEntities() {
                         </span>
                     </div>
                 </div>
-                <button class="btn btn-danger" onclick="unshareEntity(${item.ID})">
+                <button class="btn btn-danger" onclick="unshareEntity(${item.id})">
                     Unshare
                 </button>
             </div>

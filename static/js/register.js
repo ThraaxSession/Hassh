@@ -9,8 +9,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Check if admin already exists
+    checkAdminExists();
+
     document.getElementById('registerForm').addEventListener('submit', handleRegister);
 });
+
+async function checkAdminExists() {
+    try {
+        const response = await fetch(`${API_BASE}/admin-exists`);
+        const data = await response.json();
+        
+        if (data.exists) {
+            // Admin exists - registration is disabled, redirect to login
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+    }
+}
 
 async function handleRegister(e) {
     e.preventDefault();

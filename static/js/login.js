@@ -9,8 +9,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Check if admin exists
+    checkAdminExists();
+
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
 });
+
+async function checkAdminExists() {
+    try {
+        const response = await fetch(`${API_BASE}/admin-exists`);
+        const data = await response.json();
+        
+        if (!data.exists) {
+            // No admin exists - show setup button
+            document.getElementById('setupMessage').style.display = 'block';
+            document.getElementById('contactMessage').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+    }
+}
 
 async function handleLogin(e) {
     e.preventDefault();

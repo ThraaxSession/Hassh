@@ -74,6 +74,16 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
+	// Check if an admin already exists
+	var adminCount int64
+	database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&adminCount)
+	
+	// If admin exists, this endpoint should not be used (admin creates users)
+	if adminCount > 0 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Registration is disabled. Please contact your administrator."})
+		return
+	}
+
 	// Create user with generated password
 	user, password, err := auth.CreateUser(req.Username)
 	if err != nil {
@@ -94,6 +104,16 @@ func (h *Handler) Register(c *gin.Context) {
 		"generated_password":      password,
 		"require_password_change": true,
 		"message":                 "Please change your password after login",
+	})
+}
+
+// AdminExists checks if any admin user exists in the system
+func (h *Handler) AdminExists(c *gin.Context) {
+	var count int64
+	database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&count)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"exists": count > 0,
 	})
 }
 

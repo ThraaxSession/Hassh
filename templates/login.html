@@ -90,7 +90,15 @@
                 </div>
                 <button type="submit">Login</button>
             </form>
-            <p style="text-align: center; color: #666; font-size: 14px; margin-top: 20px;">
+            <div id="setupMessage" style="display: none; text-align: center; margin-top: 20px;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                    No administrator account exists. Create the first admin account to get started.
+                </p>
+                <a href="/register" style="display: inline-block; padding: 12px 24px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                    Create First Admin Account
+                </a>
+            </div>
+            <p id="contactMessage" style="text-align: center; color: #666; font-size: 14px; margin-top: 20px;">
                 Contact your administrator to create an account if you don't have one.
             </p>
             <div id="errorMessage"></div>

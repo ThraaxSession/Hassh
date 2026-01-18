@@ -63,8 +63,7 @@ func main() {
 	})
 
 	r.GET("/register", func(c *gin.Context) {
-		// Redirect to login - no public registration
-		c.Redirect(http.StatusMovedPermanently, "/login")
+		c.HTML(http.StatusOK, "register.html", nil)
 	})
 
 	r.GET("/settings", func(c *gin.Context) {
@@ -80,6 +79,8 @@ func main() {
 	{
 		// Public endpoints
 		api.POST("/login", handler.Login)
+		api.POST("/register", handler.Register)                          // Public registration (only when no admin exists)
+		api.GET("/admin-exists", handler.AdminExists)                    // Check if admin exists
 		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access
 		api.POST("/shares/:id/trigger/:entityId", handler.TriggerEntity) // Public trigger for triggerable shares
 
@@ -126,14 +127,15 @@ func main() {
 	}
 
 	// Create server
+	addr := cfg.Host + ":" + cfg.Port
 	srv := &http.Server{
-		Addr:    ":" + cfg.Port,
+		Addr:    addr,
 		Handler: r,
 	}
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Starting Hassh server on port %s", cfg.Port)
+		log.Printf("Starting Hassh server on %s", addr)
 		log.Printf("Database: %s", cfg.DBPath)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)

@@ -12,6 +12,11 @@ import (
 
 // Load loads configuration from environment variables or defaults
 func Load() *models.Config {
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "0.0.0.0" // Listen on all interfaces by default
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -41,6 +46,7 @@ func Load() *models.Config {
 	return &models.Config{
 		HomeAssistantURL: haURL,
 		Token:            token,
+		Host:             host,
 		Port:             port,
 		RefreshInterval:  refreshInterval,
 		DBPath:           dbPath,

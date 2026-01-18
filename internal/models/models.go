@@ -78,6 +78,7 @@ type ShareLink struct {
 type Config struct {
 	HomeAssistantURL string `json:"home_assistant_url"`
 	Token            string `json:"token"`
+	Host             string `json:"host"`
 	Port             string `json:"port"`
 	RefreshInterval  int    `json:"refresh_interval"` // in seconds
 	DBPath           string `json:"db_path"`

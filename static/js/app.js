@@ -582,7 +582,7 @@ function editShareLink(shareId) {
             <div id="editShareModal" class="modal">
                 <div class="modal-content">
                     <span class="close" onclick="document.getElementById('editShareModal').style.display='none'">&times;</span>
-                    <h2>Edit Share Link</h2>
+                    <h2 style="color: var(--text-primary);">Edit Share Link</h2>
                     <div id="editShareContent"></div>
                 </div>
             </div>

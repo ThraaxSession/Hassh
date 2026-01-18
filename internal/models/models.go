@@ -20,7 +20,7 @@ type User struct {
 // Entity represents a Home Assistant entity
 type Entity struct {
 	ID          uint                   `gorm:"primarykey" json:"id"`
-	EntityID    string                 `gorm:"uniqueIndex;not null" json:"entity_id"`
+	EntityID    string                 `gorm:"not null" json:"entity_id"`
 	State       string                 `json:"state"`
 	Attributes  JSON                   `json:"attributes"`
 	LastChanged time.Time              `json:"last_changed"`
@@ -29,6 +29,16 @@ type Entity struct {
 	User        User                   `gorm:"foreignKey:UserID" json:"-"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// BeforeCreate hook to ensure unique entity per user
+func (e *Entity) BeforeCreate(tx *gorm.DB) error {
+	var count int64
+	tx.Model(&Entity{}).Where("entity_id = ? AND user_id = ?", e.EntityID, e.UserID).Count(&count)
+	if count > 0 {
+		return gorm.ErrDuplicatedKey
+	}
+	return nil
 }
 
 // ShareLink represents a shareable link
@@ -91,8 +101,9 @@ func (j JSON) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements json.Unmarshaler
 func (j *JSON) UnmarshalJSON(data []byte) error {
-	if j == nil {
-		return gorm.ErrInvalidData
+	if len(data) == 0 || string(data) == "null" {
+		*j = nil
+		return nil
 	}
 	*j = data
 	return nil

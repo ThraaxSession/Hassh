@@ -123,8 +123,6 @@ async function addEntity() {
             logout();
             return;
         }
-            body: JSON.stringify({ entity_id: entityId })
-        });
         
         if (!response.ok) {
             const error = await response.json();
@@ -175,10 +173,10 @@ function renderEntities() {
     container.innerHTML = trackedEntities.map(entity => `
         <div class="entity-item">
             <div class="entity-info">
-                <div class="entity-id">${escapeHtml(entity.entity_id || entity.id)}</div>
+                <div class="entity-id">${escapeHtml(entity.entity_id)}</div>
                 <div class="entity-state">State: ${escapeHtml(entity.state || 'unknown')}</div>
             </div>
-            <button class="btn btn-danger" onclick="deleteEntity('${escapeHtml(entity.entity_id || entity.id)}')">Delete</button>
+            <button class="btn btn-danger" onclick="deleteEntity(${entity.id})">Delete</button>
         </div>
     `).join('');
 }

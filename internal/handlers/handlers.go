@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -125,9 +126,16 @@ func (h *Handler) AddEntity(c *gin.Context) {
 // DeleteEntity removes an entity from tracking
 func (h *Handler) DeleteEntity(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
-	entityID := c.Param("id")
+	idStr := c.Param("id")
 
-	result := database.DB.Where("entity_id = ? AND user_id = ?", entityID, userID).Delete(&models.Entity{})
+	// Convert string ID to uint
+	var id uint
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID"})
+		return
+	}
+
+	result := database.DB.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Entity{})
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete entity"})
 		return

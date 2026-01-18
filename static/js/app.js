@@ -13,6 +13,25 @@ let mySharedEntities = [];
 let settingsListenersSet = false; // Track if settings listeners are set
 let currentOTPSecret = ''; // Track current OTP secret during setup
 
+// Helper function to sort entities alphabetically by ID, then by state
+function sortEntitiesByIdAndState(entities, idField = 'entity_id', stateField = 'state') {
+    return [...entities].sort((a, b) => {
+        const idA = (a[idField] || '').toLowerCase();
+        const idB = (b[idField] || '').toLowerCase();
+        const stateA = (a[stateField] || 'unknown').toLowerCase();
+        const stateB = (b[stateField] || 'unknown').toLowerCase();
+        
+        // First sort by entity_id
+        if (idA < idB) return -1;
+        if (idA > idB) return 1;
+        
+        // If entity_id is the same, sort by state
+        if (stateA < stateB) return -1;
+        if (stateA > stateB) return 1;
+        return 0;
+    });
+}
+
 // Section navigation
 function showSection(sectionId) {
     // Hide all sections
@@ -219,21 +238,7 @@ function renderEntities() {
     }
     
     // Sort entities: first alphabetically by entity_id, then by state
-    const sortedEntities = [...trackedEntities].sort((a, b) => {
-        const idA = (a.entity_id || '').toLowerCase();
-        const idB = (b.entity_id || '').toLowerCase();
-        const stateA = (a.state || 'unknown').toLowerCase();
-        const stateB = (b.state || 'unknown').toLowerCase();
-        
-        // First sort by entity_id
-        if (idA < idB) return -1;
-        if (idA > idB) return 1;
-        
-        // If entity_id is the same, sort by state
-        if (stateA < stateB) return -1;
-        if (stateA > stateB) return 1;
-        return 0;
-    });
+    const sortedEntities = sortEntitiesByIdAndState(trackedEntities);
     
     container.innerHTML = sortedEntities.map(entity => `
         <div class="entity-item">
@@ -749,21 +754,7 @@ function updateShareEntitySelect() {
     }
     
     // Sort entities: first alphabetically by entity_id, then by state
-    const sortedEntities = [...trackedEntities].sort((a, b) => {
-        const idA = (a.entity_id || '').toLowerCase();
-        const idB = (b.entity_id || '').toLowerCase();
-        const stateA = (a.state || 'unknown').toLowerCase();
-        const stateB = (b.state || 'unknown').toLowerCase();
-        
-        // First sort by entity_id
-        if (idA < idB) return -1;
-        if (idA > idB) return 1;
-        
-        // If entity_id is the same, sort by state
-        if (stateA < stateB) return -1;
-        if (stateA > stateB) return 1;
-        return 0;
-    });
+    const sortedEntities = sortEntitiesByIdAndState(trackedEntities);
     
     container.innerHTML = `
         <div class="search-box" style="margin-bottom: 10px;">
@@ -1153,21 +1144,7 @@ async function renderSharedWithMe() {
     }
     
     // Sort entities: first alphabetically by EntityID, then by AccessMode
-    const sortedEntities = [...sharedWithMe].sort((a, b) => {
-        const idA = (a.EntityID || '').toLowerCase();
-        const idB = (b.EntityID || '').toLowerCase();
-        const modeA = (a.AccessMode || '').toLowerCase();
-        const modeB = (b.AccessMode || '').toLowerCase();
-        
-        // First sort by entity_id
-        if (idA < idB) return -1;
-        if (idA > idB) return 1;
-        
-        // If entity_id is the same, sort by access mode
-        if (modeA < modeB) return -1;
-        if (modeA > modeB) return 1;
-        return 0;
-    });
+    const sortedEntities = sortEntitiesByIdAndState(sharedWithMe, 'EntityID', 'AccessMode');
     
     // Group by owner
     const groupedByOwner = {};
@@ -1392,21 +1369,7 @@ async function renderMySharedEntities() {
     }
     
     // Sort entities: first alphabetically by EntityID, then by AccessMode
-    const sortedEntities = [...mySharedEntities].sort((a, b) => {
-        const idA = (a.EntityID || '').toLowerCase();
-        const idB = (b.EntityID || '').toLowerCase();
-        const modeA = (a.AccessMode || '').toLowerCase();
-        const modeB = (b.AccessMode || '').toLowerCase();
-        
-        // First sort by entity_id
-        if (idA < idB) return -1;
-        if (idA > idB) return 1;
-        
-        // If entity_id is the same, sort by access mode
-        if (modeA < modeB) return -1;
-        if (modeA > modeB) return 1;
-        return 0;
-    });
+    const sortedEntities = sortEntitiesByIdAndState(mySharedEntities, 'EntityID', 'AccessMode');
     
     // Group by target user
     const groupedByUser = {};

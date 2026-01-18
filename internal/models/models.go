@@ -15,9 +15,23 @@ type User struct {
 	Password              string    `gorm:"not null" json:"-"` // Hashed password (not exposed in JSON)
 	HAToken               string    `json:"-"`                 // Home Assistant Token (not exposed in JSON)
 	HAURL                 string    `json:"-"`                 // Home Assistant URL
+	IsAdmin               bool      `gorm:"default:false" json:"is_admin"`
 	RequirePasswordChange bool      `gorm:"default:false" json:"require_password_change"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
+}
+
+// SharedEntity represents an entity shared with another user
+type SharedEntity struct {
+	ID         uint      `gorm:"primarykey" json:"id"`
+	EntityID   string    `gorm:"not null" json:"entity_id"`
+	OwnerID    uint      `gorm:"not null" json:"owner_id"`
+	Owner      User      `gorm:"foreignKey:OwnerID" json:"owner"`
+	SharedWith uint      `gorm:"not null" json:"shared_with_id"`
+	SharedUser User      `gorm:"foreignKey:SharedWith" json:"shared_user"`
+	AccessMode string    `gorm:"default:readonly" json:"access_mode"` // "readonly", "triggerable"
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // Entity represents a Home Assistant entity

@@ -73,6 +73,11 @@ func CreateUser(username string) (*models.User, string, error) {
 		return nil, "", errors.New("username already exists")
 	}
 
+	// Check if this is the first user
+	var userCount int64
+	database.DB.Model(&models.User{}).Count(&userCount)
+	isFirstUser := userCount == 0
+
 	// Generate random password
 	password := GenerateRandomPassword()
 	hashedPassword, err := HashPassword(password)
@@ -83,6 +88,37 @@ func CreateUser(username string) (*models.User, string, error) {
 	user := models.User{
 		Username:              username,
 		Password:              hashedPassword,
+		IsAdmin:               isFirstUser, // First user is admin
+		RequirePasswordChange: true,
+	}
+
+	if err := database.DB.Create(&user).Error; err != nil {
+		return nil, "", err
+	}
+
+	return &user, password, nil
+}
+
+// CreateUserByAdmin creates a new user by admin (admin only)
+func CreateUserByAdmin(username string) (*models.User, string, error) {
+	// Check if user already exists
+	var existingUser models.User
+	result := database.DB.Where("username = ?", username).First(&existingUser)
+	if result.Error == nil {
+		return nil, "", errors.New("username already exists")
+	}
+
+	// Generate random password
+	password := GenerateRandomPassword()
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return nil, "", err
+	}
+
+	user := models.User{
+		Username:              username,
+		Password:              hashedPassword,
+		IsAdmin:               false,
 		RequirePasswordChange: true,
 	}
 

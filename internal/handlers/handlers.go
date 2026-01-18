@@ -57,6 +57,7 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token":                   token,
 		"user":                    user,
+		"is_admin":                user.IsAdmin,
 		"require_password_change": user.RequirePasswordChange,
 		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
 	})
@@ -599,6 +600,276 @@ func (h *Handler) TriggerEntity(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Entity triggered successfully"})
+}
+
+// Admin endpoints
+
+// ListAllUsers returns all users (admin only)
+func (h *Handler) ListAllUsers(c *gin.Context) {
+	var users []models.User
+	if err := database.DB.Select("id", "username", "is_admin", "created_at").Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+// CreateUserByAdmin creates a new user (admin only)
+func (h *Handler) CreateUserByAdmin(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Create user with generated password
+	user, password, err := auth.CreateUserByAdmin(req.Username)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"user":               user,
+		"generated_password": password,
+		"message":            "User created successfully. Share this password with the user.",
+	})
+}
+
+// DeleteUser deletes a user (admin only)
+func (h *Handler) DeleteUser(c *gin.Context) {
+	userIDStr := c.Param("id")
+	var userID uint
+	if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	// Check if user exists and is not the only admin
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Prevent deleting the last admin
+	if user.IsAdmin {
+		var adminCount int64
+		database.DB.Model(&models.User{}).Where("is_admin = ?", true).Count(&adminCount)
+		if adminCount <= 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete the last admin user"})
+			return
+		}
+	}
+
+	// Delete user's entities and share links
+	database.DB.Where("user_id = ?", userID).Delete(&models.Entity{})
+	database.DB.Where("user_id = ?", userID).Delete(&models.ShareLink{})
+	database.DB.Where("owner_id = ? OR shared_with = ?", userID, userID).Delete(&models.SharedEntity{})
+
+	// Delete user
+	if err := database.DB.Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+// Entity sharing endpoints
+
+// ShareEntityWithUser shares an entity with another user
+func (h *Handler) ShareEntityWithUser(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var req struct {
+		EntityID   string `json:"entity_id" binding:"required"`
+		SharedWith uint   `json:"shared_with_id" binding:"required"`
+		AccessMode string `json:"access_mode"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set default access mode
+	if req.AccessMode == "" {
+		req.AccessMode = "readonly"
+	}
+
+	// Validate access mode
+	if req.AccessMode != "readonly" && req.AccessMode != "triggerable" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid access mode"})
+		return
+	}
+
+	// Check if target user exists
+	var targetUser models.User
+	if err := database.DB.First(&targetUser, req.SharedWith).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Target user not found"})
+		return
+	}
+
+	// Check if entity belongs to user
+	var entity models.Entity
+	if err := database.DB.Where("entity_id = ? AND user_id = ?", req.EntityID, userID).First(&entity).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not found or not owned by you"})
+		return
+	}
+
+	// Check if already shared
+	var existingShare models.SharedEntity
+	result := database.DB.Where("entity_id = ? AND owner_id = ? AND shared_with = ?", req.EntityID, userID, req.SharedWith).First(&existingShare)
+	if result.Error == nil {
+		// Update existing share
+		existingShare.AccessMode = req.AccessMode
+		if err := database.DB.Save(&existingShare).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update shared entity"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Shared entity updated", "share": existingShare})
+		return
+	}
+
+	// Create new shared entity
+	sharedEntity := models.SharedEntity{
+		EntityID:   req.EntityID,
+		OwnerID:    userID,
+		SharedWith: req.SharedWith,
+		AccessMode: req.AccessMode,
+	}
+
+	if err := database.DB.Create(&sharedEntity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to share entity"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, sharedEntity)
+}
+
+// GetSharedWithMe returns entities shared with current user
+func (h *Handler) GetSharedWithMe(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var sharedEntities []models.SharedEntity
+	if err := database.DB.Preload("Owner").Where("shared_with = ?", userID).Find(&sharedEntities).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch shared entities"})
+		return
+	}
+
+	c.JSON(http.StatusOK, sharedEntities)
+}
+
+// GetMyShares returns entities current user has shared with others
+func (h *Handler) GetMyShares(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+
+	var sharedEntities []models.SharedEntity
+	if err := database.DB.Preload("SharedUser").Where("owner_id = ?", userID).Find(&sharedEntities).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch shared entities"})
+		return
+	}
+
+	c.JSON(http.StatusOK, sharedEntities)
+}
+
+// UnshareEntity removes entity sharing
+func (h *Handler) UnshareEntity(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	shareIDStr := c.Param("id")
+	
+	var shareID uint
+	if _, err := fmt.Sscanf(shareIDStr, "%d", &shareID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid share ID"})
+		return
+	}
+
+	// Check if shared entity belongs to user
+	var sharedEntity models.SharedEntity
+	if err := database.DB.Where("id = ? AND owner_id = ?", shareID, userID).First(&sharedEntity).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Shared entity not found or not owned by you"})
+		return
+	}
+
+	if err := database.DB.Delete(&sharedEntity).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unshare entity"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Entity unshared successfully"})
+}
+
+// UpdateShareLink updates an existing share link
+func (h *Handler) UpdateShareLink(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	shareID := c.Param("id")
+
+	var req struct {
+		EntityIDs  []string `json:"entity_ids"`
+		Type       string   `json:"type"`
+		AccessMode string   `json:"access_mode"`
+		MaxAccess  int      `json:"max_access"`
+		ExpiresAt  string   `json:"expires_at"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get share link
+	var shareLink models.ShareLink
+	if err := database.DB.Where("id = ? AND user_id = ?", shareID, userID).First(&shareLink).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Share link not found or not owned by you"})
+		return
+	}
+
+	// Update fields
+	if len(req.EntityIDs) > 0 {
+		entityIDsJSON, err := json.Marshal(req.EntityIDs)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity IDs"})
+			return
+		}
+		shareLink.EntityIDs = models.JSON(entityIDsJSON)
+	}
+
+	if req.Type != "" {
+		shareLink.Type = req.Type
+	}
+
+	if req.AccessMode != "" {
+		if req.AccessMode != "readonly" && req.AccessMode != "triggerable" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid access mode"})
+			return
+		}
+		shareLink.AccessMode = req.AccessMode
+	}
+
+	if req.Type == "counter" && req.MaxAccess > 0 {
+		shareLink.MaxAccess = req.MaxAccess
+	}
+
+	if req.Type == "time" && req.ExpiresAt != "" {
+		expiresAt, err := time.Parse(time.RFC3339, req.ExpiresAt)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expiration date format"})
+			return
+		}
+		shareLink.ExpiresAt = expiresAt
+	}
+
+	if err := database.DB.Save(&shareLink).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update share link"})
+		return
+	}
+
+	c.JSON(http.StatusOK, shareLink)
 }
 
 func generateID() string {

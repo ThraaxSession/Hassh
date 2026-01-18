@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ThraaxSession/Hash/internal/auth"
+	"github.com/ThraaxSession/Hash/internal/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,6 +47,27 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Set user in context
 		c.Set("user", user)
 		c.Set("userID", user.ID)
+		c.Next()
+	}
+}
+
+// AdminMiddleware validates that user is an admin
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			c.Abort()
+			return
+		}
+
+		userObj, ok := user.(*models.User)
+		if !ok || !userObj.IsAdmin {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

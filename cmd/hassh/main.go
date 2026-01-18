@@ -98,10 +98,26 @@ func main() {
 			protected.DELETE("/entities/:id", handler.DeleteEntity)
 			protected.GET("/ha/entities", handler.GetAllHAEntities)
 
+			// Entity sharing with other users
+			protected.POST("/share-entity", handler.ShareEntityWithUser)
+			protected.GET("/shared-with-me", handler.GetSharedWithMe)
+			protected.GET("/my-shares", handler.GetMyShares)
+			protected.DELETE("/shared-entity/:id", handler.UnshareEntity)
+
 			// Share link management
 			protected.POST("/shares", handler.CreateShareLink)
 			protected.GET("/shares", handler.ListShareLinks)
+			protected.PUT("/shares/:id", handler.UpdateShareLink)
 			protected.DELETE("/shares/:id", handler.DeleteShareLink)
+
+			// Admin endpoints (require admin access)
+			admin := protected.Group("")
+			admin.Use(middleware.AdminMiddleware())
+			{
+				admin.GET("/users", handler.ListAllUsers)
+				admin.POST("/users", handler.CreateUserByAdmin)
+				admin.DELETE("/users/:id", handler.DeleteUser)
+			}
 		}
 	}
 

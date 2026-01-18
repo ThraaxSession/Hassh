@@ -24,9 +24,23 @@ func Initialize(dbPath string) error {
 		&models.User{},
 		&models.Entity{},
 		&models.ShareLink{},
+		&models.SharedEntity{},
 	)
 	if err != nil {
 		return err
+	}
+
+	// Check if this is the first user and set as admin
+	var userCount int64
+	DB.Model(&models.User{}).Count(&userCount)
+	if userCount == 1 {
+		var firstUser models.User
+		DB.First(&firstUser)
+		if !firstUser.IsAdmin {
+			firstUser.IsAdmin = true
+			DB.Save(&firstUser)
+			log.Println("First user set as admin:", firstUser.Username)
+		}
 	}
 
 	log.Println("Database initialized successfully")

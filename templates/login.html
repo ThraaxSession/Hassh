@@ -13,16 +13,18 @@
             min-height: 100vh;
         }
         .login-card {
-            background: white;
-            border-radius: 12px;
+            background: var(--card-bg);
+            border-radius: 16px;
             padding: 40px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--shadow-xl);
             max-width: 450px;
             width: 100%;
+            animation: scaleIn 0.3s ease-out;
+            border: 1px solid var(--border-color);
         }
         .login-card h1 {
             text-align: center;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 30px;
         }
         .login-form .form-group {
@@ -31,36 +33,41 @@
         .login-form label {
             display: block;
             margin-bottom: 8px;
-            color: #555;
+            color: var(--text-secondary);
             font-weight: 500;
         }
         .login-form input {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 2px solid var(--input-border);
+            border-radius: 8px;
             font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
         }
         .login-form input:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
         }
         .login-form button {
             width: 100%;
             padding: 14px;
-            background: #667eea;
+            background: var(--gradient-primary);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         .login-form button:hover {
-            background: #5568d3;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
         .register-link {
             text-align: center;
@@ -72,6 +79,33 @@
         }
         .register-link a:hover {
             text-decoration: underline;
+        }
+        #setupMessage {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #38ef7d;
+        }
+        #setupMessage p {
+            color: var(--text-secondary);
+        }
+        #setupMessage a {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--gradient-success);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);
+            transition: all 0.3s ease;
+        }
+        #setupMessage a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+        #contactMessage {
+            color: var(--text-secondary);
         }
     </style>
 </head>

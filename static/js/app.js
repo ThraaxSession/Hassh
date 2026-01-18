@@ -776,52 +776,52 @@ function showAdminPanel() {
 }
 
 async function loadAllUsers() {
-	try {
-		// Use the public user list endpoint for dropdown population
-		const response = await fetch(`${API_BASE}/users/list`, {
-			headers: getAuthHeaders()
-		});
-		
-		if (response.status === 401) {
-			logout();
-			return;
-		}
-		
-		if (!response.ok) {
-			console.error('Failed to load user list');
-			return;
-		}
-		
-		const users = await response.json();
-		allUsers = users;
-		populateUserDropdown(users);
-		
-		// If admin, also load full user details for admin panel
-		if (isAdmin) {
-			await loadAdminUsers();
-		}
-	} catch (error) {
-		console.error('Error loading users:', error);
-	}
+    try {
+        // Use the public user list endpoint for dropdown population
+        const response = await fetch(`${API_BASE}/users/list`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) {
+            console.error('Failed to load user list');
+            return;
+        }
+        
+        const users = await response.json();
+        allUsers = users;
+        populateUserDropdown(users);
+        
+        // If admin, also load full user details for admin panel
+        if (isAdmin) {
+            await loadAdminUsers();
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
 }
 
 async function loadAdminUsers() {
-	try {
-		const response = await fetch(`${API_BASE}/users`, {
-			headers: getAuthHeaders()
-		});
-		
-		if (response.status === 401 || response.status === 403) {
-			return;
-		}
-		
-		if (!response.ok) throw new Error('Failed to load users');
-		
-		const users = await response.json();
-		renderUsersList(users);
-	} catch (error) {
-		console.error('Error loading admin users:', error);
-	}
+    try {
+        const response = await fetch(`${API_BASE}/users`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401 || response.status === 403) {
+            return;
+        }
+        
+        if (!response.ok) throw new Error('Failed to load users');
+        
+        const users = await response.json();
+        renderUsersList(users);
+    } catch (error) {
+        console.error('Error loading admin users:', error);
+    }
 }
 
 function populateUserDropdown(users) {

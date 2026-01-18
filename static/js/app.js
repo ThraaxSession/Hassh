@@ -1323,11 +1323,6 @@ function closeEntityModal(event) {
     }
 }
 
-async function viewSharedEntity(entityId, ownerName, accessMode) {
-    alert(`Viewing entity ${entityId} shared by ${ownerName}\nAccess Mode: ${accessMode}\n\nThis would show entity details and controls if triggerable.`);
-    // TODO: Implement entity details view with real-time state
-}
-
 // My Shared Entities functionality
 async function loadMySharedEntities() {
     try {

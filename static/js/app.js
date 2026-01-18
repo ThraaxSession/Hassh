@@ -1074,7 +1074,7 @@ async function renderSharedWithMe() {
     // Group by owner
     const groupedByOwner = {};
     sharedWithMe.forEach(item => {
-        const ownerName = item.Owner ? item.Owner.Username : 'Unknown';
+        const ownerName = item.Owner ? item.Owner.username : 'Unknown';
         if (!groupedByOwner[ownerName]) {
             groupedByOwner[ownerName] = [];
         }
@@ -1084,18 +1084,18 @@ async function renderSharedWithMe() {
     container.innerHTML = Object.keys(groupedByOwner).map(ownerName => {
         const entities = groupedByOwner[ownerName];
         const entitiesHtml = entities.map(item => `
-            <div class="entity-item">
+            <div class="entity-item" id="shared-entity-container-${escapeHtml(item.EntityID).replace(/\./g, '-')}">
                 <div class="entity-info">
                     <div class="entity-id">${escapeHtml(item.EntityID)}</div>
-                    <div class="entity-state">
+                    <div class="entity-access" style="margin-top: 5px;">
                         <span class="badge badge-${item.AccessMode === 'triggerable' ? 'success' : 'info'}">
                             ${item.AccessMode === 'triggerable' ? '🎛️ Triggerable' : '👁️ Read-Only'}
                         </span>
                     </div>
+                    <div id="shared-entity-details-${escapeHtml(item.EntityID).replace(/\./g, '-')}">
+                        <div style="margin-top: 10px; color: #999;">Loading...</div>
+                    </div>
                 </div>
-                <button class="btn btn-secondary" onclick="viewSharedEntity('${escapeHtml(item.EntityID)}', '${escapeHtml(ownerName)}', '${escapeHtml(item.AccessMode)}')">
-                    View Entity
-                </button>
             </div>
         `).join('');
         
@@ -1106,11 +1106,161 @@ async function renderSharedWithMe() {
             </div>
         `;
     }).join('');
+    
+    // Load entity states
+    sharedWithMe.forEach(item => {
+        loadSharedEntityState(item.EntityID, item.AccessMode);
+    });
 }
 
-async function viewSharedEntity(entityId, ownerName, accessMode) {
-    alert(`Viewing entity ${entityId} shared by ${ownerName}\nAccess Mode: ${accessMode}\n\nThis would show entity details and controls if triggerable.`);
-    // TODO: Implement entity details view with real-time state
+async function loadSharedEntityState(entityId, accessMode) {
+    try {
+        const response = await fetch(`${API_BASE}/shared-entity/${encodeURIComponent(entityId)}/state`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (!response.ok) {
+            updateSharedEntityStateDisplay(entityId, null, 'Error loading state', accessMode);
+            return;
+        }
+        
+        const data = await response.json();
+        updateSharedEntityStateDisplay(entityId, data.entity, null, accessMode);
+    } catch (error) {
+        console.error('Error loading shared entity state:', error);
+        updateSharedEntityStateDisplay(entityId, null, 'Error', accessMode);
+    }
+}
+
+function updateSharedEntityStateDisplay(entityId, entity, errorMessage, accessMode) {
+    const detailsElement = document.getElementById(`shared-entity-details-${entityId.replace(/\./g, '-')}`);
+    if (!detailsElement) return;
+    
+    if (errorMessage) {
+        detailsElement.innerHTML = `<div style="margin-top: 10px;"><span class="badge badge-danger">${escapeHtml(errorMessage)}</span></div>`;
+        return;
+    }
+    
+    if (entity) {
+        // Parse attributes
+        const attributes = entity.attributes || {};
+        const attrs = typeof attributes === 'string' ? JSON.parse(attributes) : attributes;
+        const attributesList = Object.entries(attrs)
+            .slice(0, 5) // Show only first 5 attributes
+            .map(([key, value]) => `<div>${escapeHtml(key)}: ${escapeHtml(String(value))}</div>`)
+            .join('');
+        
+        // Generate control buttons for triggerable entities
+        let controlButtons = '';
+        if (accessMode === 'triggerable') {
+            const domain = entityId.split('.')[0];
+            const isOn = entity.state === 'on' || entity.state === 'open';
+            const escapedEntityId = escapeHtml(entityId);
+            
+            if (domain === 'light' || domain === 'switch') {
+                controlButtons = `
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 13px; color: #666;">Control:</span>
+                        <label class="switch">
+                            <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleSharedEntity('${escapedEntityId}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; color: #666;">${isOn ? 'On' : 'Off'}</span>
+                    </div>
+                `;
+            } else if (domain === 'cover') {
+                const isOpen = entity.state === 'open';
+                controlButtons = `
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 13px; color: #666;">Control:</span>
+                        <label class="switch">
+                            <input type="checkbox" ${isOpen ? 'checked' : ''} onchange="toggleSharedCover('${escapedEntityId}', this.checked)">
+                            <span class="slider round"></span>
+                        </label>
+                        <span style="font-size: 13px; color: #666;">${isOpen ? 'Open' : 'Closed'}</span>
+                    </div>
+                `;
+            } else if (domain === 'scene' || domain === 'script') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'turn_on')" style="padding: 6px 12px; font-size: 12px;">Activate</button>
+                    </div>
+                `;
+            } else if (domain === 'button') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'press')" style="padding: 6px 12px; font-size: 12px;">Press</button>
+                    </div>
+                `;
+            } else if (domain === 'automation') {
+                controlButtons = `
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'trigger')" style="padding: 6px 12px; font-size: 12px;">Trigger</button>
+                    </div>
+                `;
+            }
+        }
+        
+        detailsElement.innerHTML = `
+            <div class="entity-state" style="margin-top: 10px;">
+                <strong>State:</strong> ${escapeHtml(entity.state || 'unknown')}
+            </div>
+            ${attributesList ? `
+                <div style="margin-top: 10px; font-size: 13px; color: #777;">
+                    <strong>Attributes:</strong>
+                    ${attributesList}
+                </div>
+            ` : ''}
+            ${entity.last_updated ? `
+                <div style="margin-top: 5px; font-size: 12px; color: #999;">
+                    Last updated: ${new Date(entity.last_updated).toLocaleString()}
+                </div>
+            ` : ''}
+            ${controlButtons}
+        `;
+    }
+}
+
+async function toggleSharedEntity(entityId, isOn) {
+    const service = isOn ? 'turn_on' : 'turn_off';
+    await triggerSharedEntityAction(entityId, service);
+}
+
+async function toggleSharedCover(entityId, isOpen) {
+    const service = isOpen ? 'open_cover' : 'close_cover';
+    await triggerSharedEntityAction(entityId, service);
+}
+
+async function triggerSharedEntityAction(entityId, service) {
+    try {
+        const response = await fetch(`${API_BASE}/shared-entity/${encodeURIComponent(entityId)}/trigger`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                service: service,
+                data: {}
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to trigger entity');
+        }
+        
+        showSuccess('Entity triggered successfully');
+        
+        // Refresh entity state after a short delay
+        setTimeout(() => {
+            const sharedItem = sharedWithMe.find(item => item.EntityID === entityId);
+            if (sharedItem) {
+                loadSharedEntityState(entityId, sharedItem.AccessMode);
+            }
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Error triggering shared entity:', error);
+        showError('Failed to trigger entity: ' + error.message);
+    }
 }
 
 // My Shared Entities functionality
@@ -1146,7 +1296,7 @@ async function renderMySharedEntities() {
     // Group by target user
     const groupedByUser = {};
     mySharedEntities.forEach(item => {
-        const targetName = item.TargetUser ? item.TargetUser.Username : 'Unknown';
+        const targetName = item.SharedUser ? item.SharedUser.username : 'Unknown';
         if (!groupedByUser[targetName]) {
             groupedByUser[targetName] = [];
         }
@@ -1165,7 +1315,7 @@ async function renderMySharedEntities() {
                         </span>
                     </div>
                 </div>
-                <button class="btn btn-danger" onclick="unshareEntity(${item.ID})">
+                <button class="btn btn-danger" onclick="unshareEntity(${item.id})">
                     Unshare
                 </button>
             </div>

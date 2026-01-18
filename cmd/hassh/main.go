@@ -113,6 +113,8 @@ func main() {
 			protected.GET("/shared-with-me", handler.GetSharedWithMe)
 			protected.GET("/my-shares", handler.GetMyShares)
 			protected.DELETE("/shared-entity/:id", handler.UnshareEntity)
+			protected.GET("/shared-entity/:entityId/state", handler.GetSharedEntityState)
+			protected.POST("/shared-entity/:entityId/trigger", handler.TriggerSharedEntity)
 
 			// Share link management
 			protected.POST("/shares", handler.CreateShareLink)

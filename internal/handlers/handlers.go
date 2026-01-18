@@ -910,6 +910,89 @@ func (h *Handler) UnshareEntity(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Entity unshared successfully"})
 }
 
+// GetSharedEntityState returns the current state of an entity shared with the user
+func (h *Handler) GetSharedEntityState(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	entityID := c.Param("entityId")
+
+	// Check if entity is shared with the user
+	var sharedEntity models.SharedEntity
+	if err := database.DB.Preload("Owner").Where("entity_id = ? AND shared_with = ?", entityID, userID).First(&sharedEntity).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not shared with you or not found"})
+		return
+	}
+
+	// Create HA client with owner's credentials
+	haClient := ha.NewClient(sharedEntity.Owner.HAURL, sharedEntity.Owner.HAToken)
+
+	// Fetch current state
+	entity, err := haClient.GetEntity(entityID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch entity state: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"entity":      entity,
+		"access_mode": sharedEntity.AccessMode,
+		"owner":       sharedEntity.Owner.Username,
+	})
+}
+
+// TriggerSharedEntity triggers an action on an entity shared with the user
+func (h *Handler) TriggerSharedEntity(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	entityID := c.Param("entityId")
+
+	var req struct {
+		Service string                 `json:"service" binding:"required"`
+		Data    map[string]interface{} `json:"data"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if entity is shared with the user and is triggerable
+	var sharedEntity models.SharedEntity
+	if err := database.DB.Preload("Owner").Where("entity_id = ? AND shared_with = ?", entityID, userID).First(&sharedEntity).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Entity not shared with you or not found"})
+		return
+	}
+
+	// Check access mode
+	if sharedEntity.AccessMode != "triggerable" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "This entity is read-only"})
+		return
+	}
+
+	// Parse domain from entity_id (e.g., "light.living_room" -> domain: "light")
+	parts := strings.Split(entityID, ".")
+	if len(parts) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entity ID format"})
+		return
+	}
+	domain := parts[0]
+
+	// Create HA client with owner's credentials
+	haClient := ha.NewClient(sharedEntity.Owner.HAURL, sharedEntity.Owner.HAToken)
+
+	// Add entity_id to service data
+	if req.Data == nil {
+		req.Data = make(map[string]interface{})
+	}
+	req.Data["entity_id"] = entityID
+
+	// Call service
+	if err := haClient.CallService(domain, req.Service, req.Data); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to trigger entity: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Entity triggered successfully"})
+}
+
 // UpdateShareLink updates an existing share link
 func (h *Handler) UpdateShareLink(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)

@@ -477,7 +477,7 @@ input:focus {
 
 .share-id {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     font-family: monospace;
 }
 
@@ -543,6 +543,7 @@ input:focus {
     font-family: monospace;
     font-size: 13px;
     border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .badge {
@@ -561,7 +562,7 @@ input:focus {
 
 .badge-counter {
     background: #ffc107;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .badge-time {
@@ -590,23 +591,27 @@ input:focus {
 }
 
 .badge-warning {
-    background: #fff3cd;
-    color: #856404;
+    background: rgba(255, 193, 7, 0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 193, 7, 0.4);
 }
 
 .badge-danger {
-    background: #f8d7da;
-    color: #721c24;
+    background: rgba(235, 51, 73, 0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(235, 51, 73, 0.4);
 }
 
 .badge-primary {
-    background: #cce5ff;
-    color: #004085;
+    background: rgba(102, 126, 234, 0.2);
+    color: var(--text-primary);
+    border: 1px solid rgba(102, 126, 234, 0.4);
 }
 
 .badge-secondary {
-    background: #e2e3e5;
-    color: #383d41;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
 }
 
 /* Toast Notification System */
@@ -1298,6 +1303,11 @@ input:checked + .slider:before {
 
 .admin-section {
     margin-bottom: 40px;
+    padding-top: 10px;
+}
+
+.admin-section:first-of-type {
+    padding-top: 0;
 }
 
 .admin-section h3 {

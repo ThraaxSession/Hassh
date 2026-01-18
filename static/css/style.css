@@ -100,6 +100,13 @@ header h1 {
     opacity: 0.9;
 }
 
+.card .subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    font-size: 1em;
+    opacity: 1;
+}
+
 .user-controls {
     position: absolute;
     top: 20px;
@@ -1241,12 +1248,12 @@ input:checked + .slider:before {
 .modern-table tbody tr {
     background: var(--card-bg);
     border-bottom: 1px solid var(--border-color);
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .modern-table tbody tr:hover {
     background: var(--bg-secondary);
-    transform: translateX(2px);
+    box-shadow: var(--shadow-sm);
 }
 
 .modern-table tbody tr:last-child {

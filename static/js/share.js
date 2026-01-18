@@ -89,7 +89,10 @@ function renderSharedEntities(entities, accessMode) {
         return;
     }
     
-    container.innerHTML = entities.map(entity => {
+    // Sort entities: first alphabetically by entity_id, then by state
+    const sortedEntities = sortEntitiesByIdAndState(entities);
+    
+    container.innerHTML = sortedEntities.map(entity => {
         const attributes = entity.attributes || {};
         const attributesList = Object.entries(attributes)
             .slice(0, 5) // Show only first 5 attributes

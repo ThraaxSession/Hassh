@@ -218,7 +218,10 @@ function renderEntities() {
         return;
     }
     
-    container.innerHTML = trackedEntities.map(entity => `
+    // Sort entities: first alphabetically by entity_id, then by state
+    const sortedEntities = sortEntitiesByIdAndState(trackedEntities);
+    
+    container.innerHTML = sortedEntities.map(entity => `
         <div class="entity-item">
             <div class="entity-info">
                 <div class="entity-id">${escapeHtml(entity.entity_id)}</div>
@@ -731,16 +734,54 @@ function updateShareEntitySelect() {
         return;
     }
     
-    container.innerHTML = '<div class="checkbox-group">' + 
-        trackedEntities.map(entity => `
-            <div class="checkbox-item">
-                <label>
-                    <input type="checkbox" value="${escapeHtml(entity.entity_id || entity.id)}">
-                    ${escapeHtml(entity.entity_id || entity.id)}
-                </label>
-            </div>
-        `).join('') + 
-        '</div>';
+    // Sort entities: first alphabetically by entity_id, then by state
+    const sortedEntities = sortEntitiesByIdAndState(trackedEntities);
+    
+    container.innerHTML = `
+        <div class="search-box" style="margin-bottom: 10px;">
+            <input type="text" id="shareEntitySearch" placeholder="Search entities..." 
+                   oninput="filterShareEntities()" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+        </div>
+        <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="selectAllShareEntities()" style="padding: 6px 12px; font-size: 13px;">Select All</button>
+            <button class="btn btn-secondary" onclick="deselectAllShareEntities()" style="padding: 6px 12px; font-size: 13px;">Deselect All</button>
+        </div>
+        <div id="shareEntityList" class="checkbox-group" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+            ${sortedEntities.map(entity => `
+                <div class="checkbox-item" data-entity-id="${escapeHtml(entity.entity_id || entity.id)}">
+                    <label>
+                        <input type="checkbox" value="${escapeHtml(entity.entity_id || entity.id)}">
+                        ${escapeHtml(entity.entity_id || entity.id)}
+                        <span style="color: #999; font-size: 12px; margin-left: 8px;">(${escapeHtml(entity.state || 'unknown')})</span>
+                    </label>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function filterShareEntities() {
+    const searchTerm = document.getElementById('shareEntitySearch').value.toLowerCase();
+    const items = document.querySelectorAll('#shareEntityList .checkbox-item');
+    
+    items.forEach(item => {
+        const entityId = item.getAttribute('data-entity-id').toLowerCase();
+        if (entityId.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function selectAllShareEntities() {
+    const checkboxes = document.querySelectorAll('#shareEntityList .checkbox-item:not([style*="display: none"]) input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllShareEntities() {
+    const checkboxes = document.querySelectorAll('#shareEntityList input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
 }
 
 function handleShareTypeChange() {
@@ -1083,9 +1124,12 @@ async function renderSharedWithMe() {
         return;
     }
     
+    // Sort entities: first alphabetically by EntityID, then by AccessMode
+    const sortedEntities = sortEntitiesByIdAndState(sharedWithMe, 'EntityID', 'AccessMode');
+    
     // Group by owner
     const groupedByOwner = {};
-    sharedWithMe.forEach(item => {
+    sortedEntities.forEach(item => {
         const ownerName = item.Owner ? item.Owner.username : 'Unknown';
         if (!groupedByOwner[ownerName]) {
             groupedByOwner[ownerName] = [];
@@ -1120,7 +1164,7 @@ async function renderSharedWithMe() {
     }).join('');
     
     // Load entity states
-    sharedWithMe.forEach(item => {
+    sortedEntities.forEach(item => {
         loadSharedEntityState(item.EntityID, item.AccessMode);
     });
 }
@@ -1305,9 +1349,12 @@ async function renderMySharedEntities() {
         return;
     }
     
+    // Sort entities: first alphabetically by EntityID, then by AccessMode
+    const sortedEntities = sortEntitiesByIdAndState(mySharedEntities, 'EntityID', 'AccessMode');
+    
     // Group by target user
     const groupedByUser = {};
-    mySharedEntities.forEach(item => {
+    sortedEntities.forEach(item => {
         const targetName = item.SharedUser ? item.SharedUser.username : 'Unknown';
         if (!groupedByUser[targetName]) {
             groupedByUser[targetName] = [];

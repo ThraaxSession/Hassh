@@ -1155,13 +1155,14 @@ function updateSharedEntityStateDisplay(entityId, entity, errorMessage, accessMo
         if (accessMode === 'triggerable') {
             const domain = entityId.split('.')[0];
             const isOn = entity.state === 'on' || entity.state === 'open';
+            const escapedEntityId = escapeHtml(entityId);
             
             if (domain === 'light' || domain === 'switch') {
                 controlButtons = `
                     <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 13px; color: #666;">Control:</span>
                         <label class="switch">
-                            <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleSharedEntity('${entityId}', this.checked)">
+                            <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleSharedEntity('${escapedEntityId}', this.checked)">
                             <span class="slider round"></span>
                         </label>
                         <span style="font-size: 13px; color: #666;">${isOn ? 'On' : 'Off'}</span>
@@ -1173,7 +1174,7 @@ function updateSharedEntityStateDisplay(entityId, entity, errorMessage, accessMo
                     <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 13px; color: #666;">Control:</span>
                         <label class="switch">
-                            <input type="checkbox" ${isOpen ? 'checked' : ''} onchange="toggleSharedCover('${entityId}', this.checked)">
+                            <input type="checkbox" ${isOpen ? 'checked' : ''} onchange="toggleSharedCover('${escapedEntityId}', this.checked)">
                             <span class="slider round"></span>
                         </label>
                         <span style="font-size: 13px; color: #666;">${isOpen ? 'Open' : 'Closed'}</span>
@@ -1182,19 +1183,19 @@ function updateSharedEntityStateDisplay(entityId, entity, errorMessage, accessMo
             } else if (domain === 'scene' || domain === 'script') {
                 controlButtons = `
                     <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${entityId}', 'turn_on')" style="padding: 6px 12px; font-size: 12px;">Activate</button>
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'turn_on')" style="padding: 6px 12px; font-size: 12px;">Activate</button>
                     </div>
                 `;
             } else if (domain === 'button') {
                 controlButtons = `
                     <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${entityId}', 'press')" style="padding: 6px 12px; font-size: 12px;">Press</button>
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'press')" style="padding: 6px 12px; font-size: 12px;">Press</button>
                     </div>
                 `;
             } else if (domain === 'automation') {
                 controlButtons = `
                     <div style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${entityId}', 'trigger')" style="padding: 6px 12px; font-size: 12px;">Trigger</button>
+                        <button class="btn btn-primary" onclick="triggerSharedEntityAction('${escapedEntityId}', 'trigger')" style="padding: 6px 12px; font-size: 12px;">Trigger</button>
                     </div>
                 `;
             }

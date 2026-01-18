@@ -367,9 +367,21 @@ All protected endpoints require `Authorization: Bearer <token>` header.
 
 - **Backend**: Go with Gin framework
 - **Frontend**: Pure JavaScript with Ajax (no frameworks)
-- **Database**: SQLite for persistent storage
-- **Authentication**: JWT tokens with Home Assistant token validation
+- **Database**: SQLite for persistent storage with versioned migrations
+- **Authentication**: JWT tokens with optional two-factor authentication
 - **Refresh**: Timer-based polling from Home Assistant
+- **Migrations**: Automatic database schema upgrades prevent breaking changes
+
+## Database Migrations
+
+Hassh uses a versioned migration system to safely upgrade database schemas without breaking existing installations.
+
+- **Automatic**: Migrations run automatically on startup
+- **Versioned**: Each migration is tracked in the `migration_histories` table
+- **Idempotent**: Safe to run multiple times
+- **Non-destructive**: Existing data is preserved
+
+For details on the migration system, see [`internal/migrations/README.md`](internal/migrations/README.md).
 
 ## Security Considerations
 

@@ -801,7 +801,7 @@ function loadAdminPanel() {
         </div>
     `;
     
-    loadAdminUsers();
+    loadAllUsers();
 }
 
 function showAdminPanel() {

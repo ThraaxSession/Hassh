@@ -11,6 +11,7 @@ let allUsers = [];
 let sharedWithMe = [];
 let mySharedEntities = [];
 let settingsListenersSet = false; // Track if settings listeners are set
+let currentOTPSecret = ''; // Track current OTP secret during setup
 
 // Section navigation
 function showSection(sectionId) {
@@ -1242,10 +1243,15 @@ async function loadSettings() {
         console.error('Error loading settings:', error);
     }
     
+    // Load OTP status
+    loadOTPStatus();
+    
     // Setup form listeners only once
     if (!settingsListenersSet) {
         const passwordForm = document.getElementById('passwordForm');
         const haConfigForm = document.getElementById('haConfigForm');
+        const otpEnableForm = document.getElementById('otpEnableForm');
+        const otpDisableFormElement = document.getElementById('otpDisableFormElement');
         
         if (passwordForm) {
             passwordForm.addEventListener('submit', handlePasswordChange);
@@ -1253,6 +1259,14 @@ async function loadSettings() {
         
         if (haConfigForm) {
             haConfigForm.addEventListener('submit', handleHAConfig);
+        }
+        
+        if (otpEnableForm) {
+            otpEnableForm.addEventListener('submit', handleOTPEnable);
+        }
+        
+        if (otpDisableFormElement) {
+            otpDisableFormElement.addEventListener('submit', handleOTPDisable);
         }
         
         settingsListenersSet = true;
@@ -1340,6 +1354,228 @@ async function handleHAConfig(e) {
         await loadSettings();
     } catch (error) {
         console.error('Error saving HA config:', error);
+        showError('Error: ' + error.message);
+    }
+}
+
+// OTP Functions
+async function loadOTPStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/settings`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) throw new Error('Failed to load OTP status');
+
+        const data = await response.json();
+        const otpEnabled = data.otp_enabled || false;
+
+        // Show appropriate section based on OTP status
+        const otpStatus = document.getElementById('otpStatus');
+        if (otpStatus) {
+            otpStatus.style.display = 'none';
+        }
+        
+        const otpEnableSection = document.getElementById('otpEnableSection');
+        const otpDisableSection = document.getElementById('otpDisableSection');
+        
+        if (otpEnabled) {
+            if (otpDisableSection) otpDisableSection.style.display = 'block';
+            if (otpEnableSection) otpEnableSection.style.display = 'none';
+        } else {
+            if (otpEnableSection) otpEnableSection.style.display = 'block';
+            if (otpDisableSection) otpDisableSection.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading OTP status:', error);
+        const otpStatus = document.getElementById('otpStatus');
+        if (otpStatus) {
+            otpStatus.innerHTML = '<p class="error">Failed to load OTP status</p>';
+        }
+    }
+}
+
+async function setupOTP() {
+    try {
+        const response = await fetch(`${API_BASE}/otp/setup`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) throw new Error('Failed to setup OTP');
+
+        const data = await response.json();
+        currentOTPSecret = data.secret;
+
+        // Generate QR code
+        const qrCodeDiv = document.getElementById('qrCode');
+        if (qrCodeDiv) {
+            qrCodeDiv.innerHTML = `<img src="${data.qr_code}" alt="QR Code" style="display: block; margin: 10px auto;" />`;
+        }
+        
+        // Show secret
+        const otpSecretDiv = document.getElementById('otpSecret');
+        if (otpSecretDiv) {
+            otpSecretDiv.textContent = data.secret;
+        }
+
+        // Show setup form
+        const otpEnableSection = document.getElementById('otpEnableSection');
+        const otpSetupSection = document.getElementById('otpSetupSection');
+        if (otpEnableSection) otpEnableSection.style.display = 'none';
+        if (otpSetupSection) otpSetupSection.style.display = 'block';
+    } catch (error) {
+        console.error('Error setting up OTP:', error);
+        showError('Error: ' + error.message);
+    }
+}
+
+async function handleOTPEnable(e) {
+    e.preventDefault();
+
+    const passwordInput = document.getElementById('otpPassword');
+    const codeInput = document.getElementById('otpCode');
+    
+    if (!passwordInput || !codeInput) {
+        showError('Form fields not found');
+        return;
+    }
+
+    const password = passwordInput.value;
+    const code = codeInput.value;
+
+    try {
+        const response = await fetch(`${API_BASE}/otp/enable`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                password: password,
+                secret: currentOTPSecret,
+                code: code
+            })
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to enable OTP');
+        }
+
+        const data = await response.json();
+        
+        // Show backup codes
+        const backupCodesDiv = document.getElementById('backupCodes');
+        if (backupCodesDiv) {
+            backupCodesDiv.innerHTML = data.backup_codes.map(code => `<div>${escapeHtml(code)}</div>`).join('');
+        }
+        
+        const otpSetupSection = document.getElementById('otpSetupSection');
+        const backupCodesSection = document.getElementById('backupCodesSection');
+        if (otpSetupSection) otpSetupSection.style.display = 'none';
+        if (backupCodesSection) backupCodesSection.style.display = 'block';
+        
+        const otpEnableForm = document.getElementById('otpEnableForm');
+        if (otpEnableForm) otpEnableForm.reset();
+    } catch (error) {
+        console.error('Error enabling OTP:', error);
+        showError('Error: ' + error.message);
+    }
+}
+
+function closeBackupCodes() {
+    const backupCodesSection = document.getElementById('backupCodesSection');
+    if (backupCodesSection) backupCodesSection.style.display = 'none';
+    loadOTPStatus();
+}
+
+function cancelOTPSetup() {
+    const otpSetupSection = document.getElementById('otpSetupSection');
+    const otpEnableSection = document.getElementById('otpEnableSection');
+    const otpEnableForm = document.getElementById('otpEnableForm');
+    
+    if (otpSetupSection) otpSetupSection.style.display = 'none';
+    if (otpEnableSection) otpEnableSection.style.display = 'block';
+    if (otpEnableForm) otpEnableForm.reset();
+    currentOTPSecret = '';
+}
+
+function disableOTP() {
+    const otpDisableSection = document.getElementById('otpDisableSection');
+    const otpDisableForm = document.getElementById('otpDisableForm');
+    
+    if (otpDisableSection) otpDisableSection.style.display = 'none';
+    if (otpDisableForm) otpDisableForm.style.display = 'block';
+}
+
+function cancelDisableOTP() {
+    const otpDisableForm = document.getElementById('otpDisableForm');
+    const otpDisableSection = document.getElementById('otpDisableSection');
+    const otpDisableFormElement = document.getElementById('otpDisableFormElement');
+    
+    if (otpDisableForm) otpDisableForm.style.display = 'none';
+    if (otpDisableSection) otpDisableSection.style.display = 'block';
+    if (otpDisableFormElement) otpDisableFormElement.reset();
+}
+
+async function handleOTPDisable(e) {
+    e.preventDefault();
+
+    const passwordInput = document.getElementById('disableOtpPassword');
+    if (!passwordInput) {
+        showError('Password field not found');
+        return;
+    }
+
+    const password = passwordInput.value;
+
+    if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/otp/disable`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                password: password
+            })
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to disable OTP');
+        }
+
+        showSuccess('Two-factor authentication has been disabled');
+        
+        const otpDisableFormElement = document.getElementById('otpDisableFormElement');
+        const otpDisableForm = document.getElementById('otpDisableForm');
+        
+        if (otpDisableFormElement) otpDisableFormElement.reset();
+        if (otpDisableForm) otpDisableForm.style.display = 'none';
+        
+        loadOTPStatus();
+    } catch (error) {
+        console.error('Error disabling OTP:', error);
         showError('Error: ' + error.message);
     }
 }

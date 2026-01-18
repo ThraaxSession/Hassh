@@ -5,7 +5,8 @@ Hassh is a web service to share Home Assistant entities and dashboards with frie
 ## Features
 
 - 🔗 **Share Home Assistant Entities**: Create shareable links for your Home Assistant entities
-- 🔐 **Secure Authentication**: Username/password authentication with configurable Home Assistant integration per user
+- 🔐 **Secure Authentication**: Username/password authentication with optional two-factor authentication (TOTP/OTP)
+- 🔒 **Two-Factor Authentication**: Optional OTP-based 2FA with backup codes for enhanced account security
 - 👥 **Multi-User Support**: Each user has their own entities and share links with admin management capabilities
 - 🤝 **Entity Sharing Between Users**: Share entities directly with other registered users
 - 🎯 **Access Control**: Choose between readonly and triggerable access modes
@@ -103,7 +104,28 @@ After the first admin is created, new users must be created by the admin through
 
 1. Navigate to `http://localhost:8080`
 2. Enter your username and password
-3. Click "Login"
+3. If 2FA is enabled, enter the 6-digit code from your authenticator app
+4. Click "Login" (or "Verify" for 2FA)
+
+### Enabling Two-Factor Authentication
+
+To add an extra layer of security to your account:
+
+1. Navigate to Settings (after logging in)
+2. Scroll to the "Two-Factor Authentication (OTP)" section
+3. Click "Enable 2FA"
+4. Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)
+   - Alternatively, you can manually enter the secret key shown
+5. Enter your password and the 6-digit code from your authenticator app
+6. Click "Verify & Enable"
+7. **Important**: Save the backup codes displayed - these can be used if you lose access to your authenticator app
+8. Each backup code can be used only once
+
+To disable 2FA:
+1. Navigate to Settings
+2. Scroll to the "Two-Factor Authentication (OTP)" section
+3. Click "Disable 2FA"
+4. Enter your password to confirm
 
 ### Configuring Home Assistant
 
@@ -192,6 +214,18 @@ If you are an admin user, you have access to additional features:
     "password": "your-password"
   }
   ```
+  Returns: `{ "token": "jwt-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool, "otp_required": bool }`
+  
+  If OTP is enabled for the user, returns: `{ "otp_required": true, "message": "OTP verification required" }`
+
+- `POST /api/verify-otp` - Verify OTP code during login
+  ```json
+  {
+    "username": "your-username",
+    "password": "your-password",
+    "code": "123456"
+  }
+  ```
   Returns: `{ "token": "jwt-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool }`
 
 - `POST /api/register` - Register first user (only available when no admin exists)
@@ -241,6 +275,29 @@ All protected endpoints require `Authorization: Bearer <token>` header.
     "new_password": "new-password"
   }
   ```
+
+#### Two-Factor Authentication (OTP)
+
+- `POST /api/otp/setup` - Generate OTP secret and QR code
+  Returns: `{ "secret": "...", "url": "otpauth://...", "qr_code": "data:image/png;base64,..." }`
+
+- `POST /api/otp/enable` - Enable OTP after verification
+  ```json
+  {
+    "password": "your-password",
+    "secret": "otp-secret-from-setup",
+    "code": "123456"
+  }
+  ```
+  Returns: `{ "message": "OTP enabled successfully", "backup_codes": ["CODE1", "CODE2", ...] }`
+
+- `POST /api/otp/disable` - Disable OTP
+  ```json
+  {
+    "password": "your-password"
+  }
+  ```
+  Returns: `{ "message": "OTP disabled successfully" }`
 
 #### Entity Management
 
@@ -310,26 +367,48 @@ All protected endpoints require `Authorization: Bearer <token>` header.
 
 - **Backend**: Go with Gin framework
 - **Frontend**: Pure JavaScript with Ajax (no frameworks)
-- **Database**: SQLite for persistent storage
-- **Authentication**: JWT tokens with Home Assistant token validation
+- **Database**: SQLite for persistent storage with versioned migrations
+- **Authentication**: JWT tokens with optional two-factor authentication
 - **Refresh**: Timer-based polling from Home Assistant
+- **Migrations**: Automatic database schema upgrades prevent breaking changes
+
+## Database Migrations
+
+Hassh uses a versioned migration system to safely upgrade database schemas without breaking existing installations.
+
+- **Automatic**: Migrations run automatically on startup
+- **Versioned**: Each migration is tracked in the `migration_histories` table
+- **Idempotent**: Safe to run multiple times
+- **Non-destructive**: Existing data is preserved
+
+For details on the migration system, see [`internal/migrations/README.md`](internal/migrations/README.md).
 
 ## Security Considerations
 
-- All user endpoints are protected with JWT authentication
-- User passwords are hashed using bcrypt
-- First registered user becomes admin automatically
-- Admin users can create and manage other users
-- Each user configures their own Home Assistant credentials
-- Home Assistant tokens are stored securely in the database (not exposed in API responses)
-- Use HTTPS in production
-- Consider rate limiting for shared links
-- Regularly review and clean up old share links
-- Use counter or time-based links instead of permanent ones when possible
-- Share links are public by design - choose carefully what you share
-- Triggerable share links allow external control - use with caution
-- Admin role is required to delete the last admin user (prevents lockout)
-- Generated passwords should be changed by users on first login
+- **Authentication & Authorization**:
+  - All user endpoints are protected with JWT authentication
+  - User passwords are hashed using bcrypt
+  - Two-factor authentication (OTP) available for enhanced security
+  - OTP secrets stored encrypted and never exposed in API responses
+  - Backup codes hashed using bcrypt before storage
+  - Password verification required to enable/disable OTP
+- **User Management**:
+  - First registered user becomes admin automatically
+  - Admin users can create and manage other users
+  - Each user configures their own Home Assistant credentials
+  - Home Assistant tokens are stored securely in the database (not exposed in API responses)
+- **Best Practices**:
+  - Use HTTPS in production
+  - Enable two-factor authentication for all users
+  - Consider rate limiting for shared links
+  - Regularly review and clean up old share links
+  - Use counter or time-based links instead of permanent ones when possible
+- **Share Links**:
+  - Share links are public by design - choose carefully what you share
+  - Triggerable share links allow external control - use with caution
+- **Admin Protection**:
+  - Admin role is required to delete the last admin user (prevents lockout)
+  - Generated passwords should be changed by users on first login
 
 ## Development
 

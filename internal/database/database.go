@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 
+	"github.com/ThraaxSession/Hash/internal/migrations"
 	"github.com/ThraaxSession/Hash/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +20,8 @@ func Initialize(dbPath string) error {
 		return err
 	}
 
-	// Auto migrate the schema
+	// Auto migrate the base schema (creates tables if they don't exist)
+	// This is safe as GORM only creates tables, doesn't modify existing ones
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Entity{},
@@ -27,6 +29,12 @@ func Initialize(dbPath string) error {
 		&models.SharedEntity{},
 	)
 	if err != nil {
+		return err
+	}
+
+	// Run database migrations for schema changes
+	log.Println("Running database migrations...")
+	if err := migrations.Run(DB); err != nil {
 		return err
 	}
 

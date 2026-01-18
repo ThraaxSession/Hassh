@@ -3,12 +3,15 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ThraaxSession/Hash/internal/database"
 	"github.com/ThraaxSession/Hash/internal/models"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -170,4 +173,82 @@ func GetUserByID(userID uint) (*models.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+// GenerateOTPSecret generates a new OTP secret for a user
+func GenerateOTPSecret(username string) (string, string, error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "Hassh",
+		AccountName: username,
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return key.Secret(), key.URL(), nil
+}
+
+// VerifyOTP verifies an OTP code against a secret
+func VerifyOTP(secret, code string) bool {
+	return totp.Validate(code, secret)
+}
+
+// GenerateBackupCodes generates 10 backup codes
+func GenerateBackupCodes() ([]string, error) {
+	codes := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		bytes := make([]byte, 4)
+		if _, err := rand.Read(bytes); err != nil {
+			return nil, err
+		}
+		codes[i] = fmt.Sprintf("%08X", bytes)
+	}
+	return codes, nil
+}
+
+// HashBackupCodes hashes backup codes and stores them as JSON
+func HashBackupCodes(codes []string) (string, error) {
+	hashedCodes := make([]string, len(codes))
+	for i, code := range codes {
+		hash, err := HashPassword(code)
+		if err != nil {
+			return "", err
+		}
+		hashedCodes[i] = hash
+	}
+	jsonData, err := json.Marshal(hashedCodes)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
+}
+
+// VerifyBackupCode verifies a backup code and removes it if valid
+func VerifyBackupCode(user *models.User, code string) (bool, error) {
+	if user.OTPBackupCodes == "" {
+		return false, nil
+	}
+
+	var hashedCodes []string
+	if err := json.Unmarshal([]byte(user.OTPBackupCodes), &hashedCodes); err != nil {
+		return false, err
+	}
+
+	// Check each backup code
+	for i, hashedCode := range hashedCodes {
+		if CheckPasswordHash(code, hashedCode) {
+			// Remove the used backup code
+			hashedCodes = append(hashedCodes[:i], hashedCodes[i+1:]...)
+			jsonData, err := json.Marshal(hashedCodes)
+			if err != nil {
+				return false, err
+			}
+			user.OTPBackupCodes = string(jsonData)
+			if err := database.DB.Save(user).Error; err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

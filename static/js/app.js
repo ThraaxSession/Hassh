@@ -39,6 +39,8 @@ function showSection(sectionId) {
         loadMySharedEntities();
     } else if (sectionId === 'admin') {
         loadAdminPanel();
+    } else if (sectionId === 'settings') {
+        loadSettings();
     }
 }
 
@@ -1197,5 +1199,144 @@ async function unshareEntity(sharedEntityId) {
     } catch (error) {
         console.error('Error unsharing entity:', error);
         showError('Failed to unshare entity: ' + error.message);
+    }
+}
+
+// Settings functionality
+async function loadSettings() {
+    try {
+        const response = await fetch(`${API_BASE}/settings`, {
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) throw new Error('Failed to load settings');
+
+        const data = await response.json();
+        
+        // Pre-fill HA URL if exists
+        if (data.ha_url) {
+            document.getElementById('haUrl').value = data.ha_url;
+        }
+
+        // Show status
+        if (data.has_ha_config) {
+            document.getElementById('haConfigStatus').innerHTML = `
+                <div class="success-message" style="margin-top: 15px;">
+                    ✅ Home Assistant is configured
+                </div>
+            `;
+        } else {
+            document.getElementById('haConfigStatus').innerHTML = `
+                <div class="warning" style="margin-top: 15px;">
+                    ⚠️ Please configure your Home Assistant connection to use entity features
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+    }
+    
+    // Setup form listeners if not already set
+    const passwordForm = document.getElementById('passwordForm');
+    const haConfigForm = document.getElementById('haConfigForm');
+    
+    if (passwordForm && !passwordForm.dataset.listenerSet) {
+        passwordForm.addEventListener('submit', handlePasswordChange);
+        passwordForm.dataset.listenerSet = 'true';
+    }
+    
+    if (haConfigForm && !haConfigForm.dataset.listenerSet) {
+        haConfigForm.addEventListener('submit', handleHAConfig);
+        haConfigForm.dataset.listenerSet = 'true';
+    }
+}
+
+async function handlePasswordChange(e) {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (newPassword !== confirmPassword) {
+        showError('New passwords do not match');
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        showError('Password must be at least 8 characters long');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/settings/password`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to change password');
+        }
+
+        showSuccess('Password changed successfully!');
+        document.getElementById('passwordForm').reset();
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showError('Error: ' + error.message);
+    }
+}
+
+async function handleHAConfig(e) {
+    e.preventDefault();
+
+    const haUrl = document.getElementById('haUrl').value.trim();
+    const haToken = document.getElementById('haToken').value.trim();
+
+    if (!haUrl || !haToken) {
+        showError('All fields are required');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/settings/ha`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                ha_url: haUrl,
+                ha_token: haToken
+            })
+        });
+
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save configuration');
+        }
+
+        showSuccess('Home Assistant configuration saved successfully!');
+        document.getElementById('haToken').value = '';
+        await loadSettings();
+    } catch (error) {
+        console.error('Error saving HA config:', error);
+        showError('Error: ' + error.message);
     }
 }

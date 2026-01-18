@@ -73,10 +73,18 @@ function displayUsername(username) {
     const header = document.querySelector('header');
     const userControls = document.createElement('div');
     userControls.className = 'user-controls';
-    userControls.innerHTML = `
-        <span style="color: white; margin-right: 15px;">👤 ${escapeHtml(username)}</span>
-        <button onclick="logout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
-    `;
+    
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'username-display';
+    usernameSpan.textContent = `👤 ${username}`;
+    
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'btn btn-secondary logout-btn';
+    logoutBtn.textContent = 'Logout';
+    logoutBtn.onclick = logout;
+    
+    userControls.appendChild(usernameSpan);
+    userControls.appendChild(logoutBtn);
     header.appendChild(userControls);
 }
 

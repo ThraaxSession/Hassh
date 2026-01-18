@@ -8,6 +8,36 @@ let shareLinks = [];
 let authToken = '';
 let isAdmin = false;
 let allUsers = [];
+let sharedWithMe = [];
+
+// Section navigation
+function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active class from all menu buttons
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected section
+    const section = document.getElementById(`section-${sectionId}`);
+    if (section) {
+        section.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+    
+    // Load section-specific data
+    if (sectionId === 'shared-with-me') {
+        loadSharedWithMe();
+    } else if (sectionId === 'admin') {
+        loadAdminPanel();
+    }
+}
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -750,17 +780,17 @@ function showSuccess(message) {
 async function checkAdminStatus() {
     isAdmin = localStorage.getItem('is_admin') === 'true';
     if (isAdmin) {
-        showAdminPanel();
+        const adminMenuBtn = document.getElementById('adminMenuBtn');
+        if (adminMenuBtn) {
+            adminMenuBtn.style.display = 'inline-block';
+        }
     }
 }
 
-function showAdminPanel() {
-    const mainContent = document.querySelector('.main-content');
-    if (!mainContent) return;
+function loadAdminPanel() {
+    const adminPanel = document.getElementById('adminPanel');
+    if (!adminPanel) return;
     
-    const adminPanel = document.createElement('section');
-    adminPanel.className = 'card';
-    adminPanel.id = 'adminPanel';
     adminPanel.innerHTML = `
         <h2>👨‍💼 Admin Panel</h2>
         
@@ -771,8 +801,12 @@ function showAdminPanel() {
         </div>
     `;
     
-    mainContent.insertBefore(adminPanel, mainContent.firstChild);
-    loadAllUsers();
+    loadAdminUsers();
+}
+
+function showAdminPanel() {
+    // Legacy function - kept for compatibility
+    loadAdminPanel();
 }
 
 async function loadAllUsers() {
@@ -992,4 +1026,76 @@ async function toggleUserAdmin(userId, isAdmin) {
         // Reload to revert the checkbox state
         await loadAllUsers();
     }
+}
+
+// Shared With Me functionality
+async function loadSharedWithMe() {
+    try {
+        const response = await fetch(`${API_BASE}/shared-with-me`, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.status === 401) {
+            logout();
+            return;
+        }
+        
+        if (!response.ok) throw new Error('Failed to load shared entities');
+        
+        sharedWithMe = await response.json();
+        renderSharedWithMe();
+    } catch (error) {
+        console.error('Error loading shared entities:', error);
+        showError('Failed to load shared entities: ' + error.message);
+    }
+}
+
+async function renderSharedWithMe() {
+    const container = document.getElementById('sharedWithMeList');
+    
+    if (!sharedWithMe || sharedWithMe.length === 0) {
+        container.innerHTML = '<div class="empty-state">No entities have been shared with you yet.</div>';
+        return;
+    }
+    
+    // Group by owner
+    const groupedByOwner = {};
+    sharedWithMe.forEach(item => {
+        const ownerName = item.Owner ? item.Owner.Username : 'Unknown';
+        if (!groupedByOwner[ownerName]) {
+            groupedByOwner[ownerName] = [];
+        }
+        groupedByOwner[ownerName].push(item);
+    });
+    
+    container.innerHTML = Object.keys(groupedByOwner).map(ownerName => {
+        const entities = groupedByOwner[ownerName];
+        const entitiesHtml = entities.map(item => `
+            <div class="entity-item">
+                <div class="entity-info">
+                    <div class="entity-id">${escapeHtml(item.EntityID)}</div>
+                    <div class="entity-state">
+                        <span class="badge badge-${item.AccessMode === 'triggerable' ? 'success' : 'info'}">
+                            ${item.AccessMode === 'triggerable' ? '🎛️ Triggerable' : '👁️ Read-Only'}
+                        </span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="viewSharedEntity('${escapeHtml(item.EntityID)}', '${ownerName}', '${item.AccessMode}')">
+                    View Entity
+                </button>
+            </div>
+        `).join('');
+        
+        return `
+            <div class="shared-group">
+                <h3 class="shared-owner">📤 Shared from: ${escapeHtml(ownerName)}</h3>
+                ${entitiesHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+async function viewSharedEntity(entityId, ownerName, accessMode) {
+    alert(`Viewing entity ${entityId} shared by ${ownerName}\nAccess Mode: ${accessMode}\n\nThis would show entity details and controls if triggerable.`);
+    // TODO: Implement entity details view with real-time state
 }

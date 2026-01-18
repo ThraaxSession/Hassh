@@ -32,6 +32,49 @@ header h1 {
     opacity: 0.9;
 }
 
+/* Navigation Menu */
+.menu-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.menu-btn {
+    background: white;
+    color: #667eea;
+    border: 2px solid transparent;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.menu-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+    background: #f8f9ff;
+}
+
+.menu-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Content Sections */
+.content-section {
+    display: none;
+}
+
+.content-section.active {
+    display: block;
+}
+
 .main-content {
     display: flex;
     flex-direction: column;
@@ -254,6 +297,41 @@ input:focus {
     color: white;
 }
 
+.badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Shared Entities */
+.shared-group {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.shared-owner {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
 .checkbox-group {
     max-height: 200px;
     overflow-y: auto;
@@ -438,6 +516,16 @@ input:checked + .slider:before {
 @media (max-width: 768px) {
     body {
         padding: 10px;
+    }
+    
+    .menu-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .menu-btn {
+        width: 100%;
+        padding: 14px 20px;
     }
     
     .form-row {

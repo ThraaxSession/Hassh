@@ -13,78 +13,106 @@
             <p class="subtitle">Share your Home Assistant entities with friends and family</p>
         </header>
 
+        <!-- Navigation Menu -->
+        <nav class="menu-bar">
+            <button class="menu-btn active" onclick="showSection('entities')">📊 My Entities</button>
+            <button class="menu-btn" onclick="showSection('shares')">🔗 Share Links</button>
+            <button class="menu-btn" onclick="showSection('shared-with-me')">📥 Shared With Me</button>
+            <button class="menu-btn" id="adminMenuBtn" onclick="showSection('admin')" style="display: none;">👥 Admin Panel</button>
+        </nav>
+
         <div class="main-content">
             <!-- Entity Management Section -->
-            <section class="card">
-                <h2>Entity Management</h2>
-                
-                <div class="add-entity-form">
-                    <h3>Add Entity to Track</h3>
-                    <div class="form-row">
-                        <button id="browseEntitiesBtn" class="btn btn-secondary">Browse Entities</button>
-                        <input type="text" id="entityIdInput" placeholder="Enter entity ID (e.g., light.living_room)" />
-                        <button id="addEntityBtn" class="btn btn-primary">Add Entity</button>
+            <section id="section-entities" class="content-section active">
+                <div class="card">
+                    <h2>Entity Management</h2>
+                    
+                    <div class="add-entity-form">
+                        <h3>Add Entity to Track</h3>
+                        <div class="form-row">
+                            <button id="browseEntitiesBtn" class="btn btn-secondary">Browse Entities</button>
+                            <input type="text" id="entityIdInput" placeholder="Enter entity ID (e.g., light.living_room)" />
+                            <button id="addEntityBtn" class="btn btn-primary">Add Entity</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="entity-list">
-                    <h3>Tracked Entities</h3>
-                    <div id="entitiesList"></div>
+                    <div class="entity-list">
+                        <h3>Tracked Entities</h3>
+                        <div id="entitiesList"></div>
+                    </div>
                 </div>
             </section>
 
             <!-- Share Link Management Section -->
-            <section class="card">
-                <h2>Share Links</h2>
-                
-                <div class="create-share-form">
-                    <h3>Create New Share Link</h3>
-                    <div class="form-group">
-                        <label>Select Entities to Share:</label>
-                        <div id="shareEntitySelect"></div>
-                    </div>
+            <section id="section-shares" class="content-section">
+                <div class="card">
+                    <h2>Share Links</h2>
                     
-                    <div class="form-group">
-                        <label>Link Type:</label>
-                        <select id="shareType">
-                            <option value="permanent">Permanent</option>
-                            <option value="counter">Limited Access Count</option>
-                            <option value="time">Time-Limited</option>
-                            <option value="user">Share with User</option>
-                        </select>
+                    <div class="create-share-form">
+                        <h3>Create New Share Link</h3>
+                        <div class="form-group">
+                            <label>Select Entities to Share:</label>
+                            <div id="shareEntitySelect"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Link Type:</label>
+                            <select id="shareType">
+                                <option value="permanent">Permanent</option>
+                                <option value="counter">Limited Access Count</option>
+                                <option value="time">Time-Limited</option>
+                                <option value="user">Share with User</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Access Mode:</label>
+                            <select id="accessMode">
+                                <option value="readonly">Read-Only (view state only)</option>
+                                <option value="triggerable">Triggerable (can control entities)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="targetUserGroup" style="display: none;">
+                            <label>Share with User:</label>
+                            <select id="targetUser">
+                                <option value="">Select a user...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="maxAccessGroup" style="display: none;">
+                            <label>Max Access Count:</label>
+                            <input type="number" id="maxAccess" min="1" value="10" />
+                        </div>
+
+                        <div class="form-group" id="expiresAtGroup" style="display: none;">
+                            <label>Expires At:</label>
+                            <input type="datetime-local" id="expiresAt" />
+                        </div>
+
+                        <button id="createShareBtn" class="btn btn-primary">Create Share Link</button>
                     </div>
 
-                    <div class="form-group">
-                        <label>Access Mode:</label>
-                        <select id="accessMode">
-                            <option value="readonly">Read-Only (view state only)</option>
-                            <option value="triggerable">Triggerable (can control entities)</option>
-                        </select>
+                    <div class="share-list">
+                        <h3>Active Share Links</h3>
+                        <div id="sharesList"></div>
                     </div>
-
-                    <div class="form-group" id="targetUserGroup" style="display: none;">
-                        <label>Share with User:</label>
-                        <select id="targetUser">
-                            <option value="">Select a user...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="maxAccessGroup" style="display: none;">
-                        <label>Max Access Count:</label>
-                        <input type="number" id="maxAccess" min="1" value="10" />
-                    </div>
-
-                    <div class="form-group" id="expiresAtGroup" style="display: none;">
-                        <label>Expires At:</label>
-                        <input type="datetime-local" id="expiresAt" />
-                    </div>
-
-                    <button id="createShareBtn" class="btn btn-primary">Create Share Link</button>
                 </div>
+            </section>
 
-                <div class="share-list">
-                    <h3>Active Share Links</h3>
-                    <div id="sharesList"></div>
+            <!-- Shared With Me Section -->
+            <section id="section-shared-with-me" class="content-section">
+                <div class="card">
+                    <h2>Entities Shared With You</h2>
+                    <p class="subtitle">View entities that other users have shared with you</p>
+                    <div id="sharedWithMeList"></div>
+                </div>
+            </section>
+
+            <!-- Admin Panel Section -->
+            <section id="section-admin" class="content-section">
+                <div class="card" id="adminPanel">
+                    <!-- Admin content loaded dynamically -->
                 </div>
             </section>
         </div>

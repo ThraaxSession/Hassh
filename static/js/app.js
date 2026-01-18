@@ -76,7 +76,7 @@ function displayUsername(username) {
     
     const usernameSpan = document.createElement('span');
     usernameSpan.className = 'username-display';
-    usernameSpan.textContent = `👤 ${username}`;
+    usernameSpan.textContent = `👤 ${username}`; // textContent automatically escapes
     
     const logoutBtn = document.createElement('button');
     logoutBtn.className = 'btn btn-secondary logout-btn';
@@ -1089,7 +1089,7 @@ async function renderSharedWithMe() {
                         </span>
                     </div>
                 </div>
-                <button class="btn btn-secondary" onclick="viewSharedEntity('${escapeHtml(item.EntityID)}', '${ownerName}', '${item.AccessMode}')">
+                <button class="btn btn-secondary" onclick="viewSharedEntity('${escapeHtml(item.EntityID)}', '${escapeHtml(ownerName)}', '${escapeHtml(item.AccessMode)}')">
                     View Entity
                 </button>
             </div>

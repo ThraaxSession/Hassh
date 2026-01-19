@@ -62,6 +62,11 @@
                         </div>
                         
                         <div class="form-group">
+                            <label>Custom Link Name (Optional):</label>
+                            <input type="text" id="shareName" placeholder="e.g., Living Room Lights" />
+                        </div>
+
+                        <div class="form-group">
                             <label>Link Type:</label>
                             <select id="shareType">
                                 <option value="permanent">Permanent</option>
@@ -77,6 +82,20 @@
                                 <option value="readonly">Read-Only (view state only)</option>
                                 <option value="triggerable">Triggerable (can control entities)</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password Protection (Optional):</label>
+                            <select id="passwordMode">
+                                <option value="none">No Password</option>
+                                <option value="generate">Generate Password</option>
+                                <option value="custom">Custom Password</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="customPasswordGroup" style="display: none;">
+                            <label>Enter Password:</label>
+                            <input type="password" id="customPassword" placeholder="Enter your password" />
                         </div>
 
                         <div class="form-group" id="targetUserGroup" style="display: none;">

@@ -113,6 +113,7 @@ function setupEventListeners() {
     document.getElementById('browseEntitiesBtn').addEventListener('click', showBrowseModal);
     document.getElementById('createShareBtn').addEventListener('click', createShareLink);
     document.getElementById('shareType').addEventListener('change', handleShareTypeChange);
+    document.getElementById('passwordMode').addEventListener('change', handlePasswordModeChange);
     
     // Modal
     const modal = document.getElementById('browseModal');
@@ -460,6 +461,25 @@ async function createShareLink() {
         access_mode: accessMode
     };
     
+    // Add custom name if provided
+    const name = document.getElementById('shareName').value.trim();
+    if (name) {
+        data.name = name;
+    }
+    
+    // Handle password
+    const passwordMode = document.getElementById('passwordMode').value;
+    if (passwordMode === 'generate') {
+        data.generate_password = true;
+    } else if (passwordMode === 'custom') {
+        const password = document.getElementById('customPassword').value;
+        if (!password) {
+            showError('Please enter a password');
+            return;
+        }
+        data.password = password;
+    }
+    
     if (type === 'counter') {
         data.max_access = parseInt(document.getElementById('maxAccess').value);
     } else if (type === 'time') {
@@ -488,11 +508,26 @@ async function createShareLink() {
             throw new Error(error.error || 'Failed to create share link');
         }
         
-        showSuccess('Share link created successfully');
+        const result = await response.json();
+        
+        // Show generated password if applicable
+        if (result.generated_password) {
+            await Dialog.alert(
+                `Share link created successfully!\n\nGenerated Password: ${result.generated_password}\n\n⚠️ Please save this password - it cannot be retrieved later.`,
+                'Share Link Created'
+            );
+        } else {
+            showSuccess('Share link created successfully');
+        }
+        
         await loadShareLinks();
         
-        // Clear selections
+        // Clear form
         entityCheckboxes.forEach(cb => cb.checked = false);
+        document.getElementById('shareName').value = '';
+        document.getElementById('passwordMode').value = 'none';
+        document.getElementById('customPassword').value = '';
+        handlePasswordModeChange();
     } catch (error) {
         console.error('Error creating share link:', error);
         showError('Failed to create share link: ' + error.message);
@@ -550,6 +585,12 @@ function renderShareLinks() {
         const accessModeBadge = link.access_mode === 'triggerable' ? 'badge-permanent' : 'badge-counter';
         const accessModeText = link.access_mode === 'triggerable' ? 'Triggerable' : 'Read-Only';
         
+        // Custom name display
+        const nameDisplay = link.name ? `<div style="font-weight: bold; margin-bottom: 5px;">📝 ${link.name}</div>` : '';
+        
+        // Password protection badge
+        const passwordBadge = link.has_password ? '<span class="badge badge-time" style="background: #e74c3c;">🔒 Password Protected</span>' : '';
+        
         return `
             <div class="share-item">
                 <div class="share-header">
@@ -557,12 +598,14 @@ function renderShareLinks() {
                         <span class="badge ${typeBadge}">${link.type}</span>
                         <span class="badge ${accessModeBadge}">${accessModeText}</span>
                         <span class="badge ${statusBadge}">${link.active ? 'Active' : 'Inactive'}</span>
+                        ${passwordBadge}
                     </div>
                     <div>
                         <button class="btn btn-secondary" onclick="editShareLink('${link.id}')" style="margin-right: 5px;">Edit</button>
                         <button class="btn btn-danger" onclick="deleteShareLink('${link.id}')">Delete</button>
                     </div>
                 </div>
+                ${nameDisplay}
                 <div class="share-details">
                     <div>Entities: ${link.entity_ids.length}</div>
                     <div>${details}</div>
@@ -795,6 +838,13 @@ function handleShareTypeChange() {
     maxAccessGroup.style.display = type === 'counter' ? 'block' : 'none';
     expiresAtGroup.style.display = type === 'time' ? 'block' : 'none';
     targetUserGroup.style.display = type === 'user' ? 'block' : 'none';
+}
+
+function handlePasswordModeChange() {
+    const mode = document.getElementById('passwordMode').value;
+    const customPasswordGroup = document.getElementById('customPasswordGroup');
+    
+    customPasswordGroup.style.display = mode === 'custom' ? 'block' : 'none';
 }
 
 // Auto-refresh

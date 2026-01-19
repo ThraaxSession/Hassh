@@ -32,6 +32,12 @@ var migrations = []Migration{
 		Up:          migrateV1Up,
 		Down:        migrateV1Down,
 	},
+	{
+		Version:     2,
+		Description: "Add custom name and password fields to share_links table",
+		Up:          migrateV2Up,
+		Down:        migrateV2Down,
+	},
 }
 
 // migrateV1Up adds OTP-related fields to the users table
@@ -76,6 +82,41 @@ func migrateV1Down(db *gorm.DB) error {
 	// For now, we'll just log a warning
 	log.Println("Migration V1 Down: SQLite doesn't support DROP COLUMN. Manual intervention required.")
 	log.Println("To rollback, you would need to recreate the users table without OTP columns.")
+	return nil
+}
+
+// migrateV2Up adds custom name and password fields to share_links table
+func migrateV2Up(db *gorm.DB) error {
+	// Check and add name column
+	if !db.Migrator().HasColumn(&models.ShareLink{}, "name") {
+		if err := db.Exec("ALTER TABLE share_links ADD COLUMN name TEXT DEFAULT ''").Error; err != nil {
+			return fmt.Errorf("failed to add name column: %w", err)
+		}
+		log.Println("Migration V2: Added name column to share_links")
+	} else {
+		log.Println("Migration V2: name column already exists, skipping")
+	}
+	
+	// Check and add password column
+	if !db.Migrator().HasColumn(&models.ShareLink{}, "password") {
+		if err := db.Exec("ALTER TABLE share_links ADD COLUMN password TEXT DEFAULT ''").Error; err != nil {
+			return fmt.Errorf("failed to add password column: %w", err)
+		}
+		log.Println("Migration V2: Added password column to share_links")
+	} else {
+		log.Println("Migration V2: password column already exists, skipping")
+	}
+
+	log.Println("Migration V2: Successfully completed")
+	return nil
+}
+
+// migrateV2Down removes custom name and password fields from share_links table
+func migrateV2Down(db *gorm.DB) error {
+	// SQLite doesn't support DROP COLUMN directly, so we need to recreate the table
+	// For now, we'll just log a warning
+	log.Println("Migration V2 Down: SQLite doesn't support DROP COLUMN. Manual intervention required.")
+	log.Println("To rollback, you would need to recreate the share_links table without name and password columns.")
 	return nil
 }
 

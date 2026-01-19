@@ -442,7 +442,15 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 		
 		// For POST requests, try to bind the JSON body
 		if c.Request.Method == "POST" {
-			if err := c.ShouldBindJSON(&req); err != nil || req.Password == "" {
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid request body",
+					"password_required": true,
+				})
+				return
+			}
+			
+			if req.Password == "" {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "Password required",
 					"password_required": true,
@@ -452,7 +460,10 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 			
 			// Validate password
 			if !auth.CheckPasswordHash(req.Password, shareLink.Password) {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Invalid password",
+					"password_required": true,
+				})
 				return
 			}
 		} else {

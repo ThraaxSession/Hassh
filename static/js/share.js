@@ -72,7 +72,7 @@ async function submitPassword() {
     
     try {
         const response = await fetch(`${API_BASE}/shares/${shareId}`, {
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -105,7 +105,7 @@ async function submitPassword() {
 async function loadSharedEntities(password = null) {
     try {
         const options = {
-            method: 'GET',
+            method: password ? 'POST' : 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }

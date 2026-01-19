@@ -424,6 +424,7 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 }
 
 // GetShareLink retrieves entities for a share link (public endpoint)
+// Supports both GET (for non-password protected links) and POST (for password protected links)
 func (h *Handler) GetShareLink(c *gin.Context) {
 	id := c.Param("id")
 
@@ -439,17 +440,27 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 			Password string `json:"password"`
 		}
 		
-		if err := c.ShouldBindJSON(&req); err != nil || req.Password == "" {
+		// For POST requests, try to bind the JSON body
+		if c.Request.Method == "POST" {
+			if err := c.ShouldBindJSON(&req); err != nil || req.Password == "" {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Password required",
+					"password_required": true,
+				})
+				return
+			}
+			
+			// Validate password
+			if !auth.CheckPasswordHash(req.Password, shareLink.Password) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
+				return
+			}
+		} else {
+			// For GET requests, return that password is required
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "Password required",
 				"password_required": true,
 			})
-			return
-		}
-		
-		// Validate password
-		if !auth.CheckPasswordHash(req.Password, shareLink.Password) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid password"})
 			return
 		}
 	}

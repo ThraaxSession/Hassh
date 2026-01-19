@@ -641,6 +641,11 @@ function editShareLink(shareId) {
     const content = document.getElementById('editShareContent');
     content.innerHTML = `
         <div class="form-group">
+            <label>Custom Link Name (Optional):</label>
+            <input type="text" id="editShareName" value="${escapeHtml(share.name || '')}" placeholder="e.g., Living Room Lights" />
+        </div>
+
+        <div class="form-group">
             <label>Select Entities to Share:</label>
             <div id="editShareEntitySelect" class="checkbox-group"></div>
         </div>
@@ -660,6 +665,21 @@ function editShareLink(shareId) {
                 <option value="readonly" ${share.access_mode === 'readonly' ? 'selected' : ''}>Read-Only</option>
                 <option value="triggerable" ${share.access_mode === 'triggerable' ? 'selected' : ''}>Triggerable</option>
             </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Password Protection:</label>
+            <select id="editPasswordMode">
+                <option value="keep">Keep Current ${share.has_password ? '(Protected)' : '(None)'}</option>
+                <option value="remove" ${!share.has_password ? 'disabled' : ''}>Remove Password</option>
+                <option value="generate">Generate New Password</option>
+                <option value="custom">Set Custom Password</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="editCustomPasswordGroup" style="display: none;">
+            <label>Enter Password:</label>
+            <input type="password" id="editCustomPassword" placeholder="Enter your password" />
         </div>
         
         <div id="editShareOptions"></div>
@@ -682,9 +702,17 @@ function editShareLink(shareId) {
     
     // Setup type change handler
     document.getElementById('editShareType').addEventListener('change', updateEditShareOptions);
+    document.getElementById('editPasswordMode').addEventListener('change', handleEditPasswordModeChange);
     updateEditShareOptions();
     
     document.getElementById('editShareModal').style.display = 'block';
+}
+
+function handleEditPasswordModeChange() {
+    const mode = document.getElementById('editPasswordMode').value;
+    const customPasswordGroup = document.getElementById('editCustomPasswordGroup');
+    
+    customPasswordGroup.style.display = mode === 'custom' ? 'block' : 'none';
 }
 
 function updateEditShareOptions() {
@@ -729,6 +757,25 @@ async function saveShareLink(shareId) {
         access_mode: accessMode
     };
     
+    // Add custom name
+    const name = document.getElementById('editShareName').value.trim();
+    data.name = name;
+    
+    // Handle password
+    const passwordMode = document.getElementById('editPasswordMode').value;
+    if (passwordMode === 'generate') {
+        data.generate_password = true;
+    } else if (passwordMode === 'custom') {
+        const password = document.getElementById('editCustomPassword').value;
+        if (!password) {
+            showError('Please enter a password');
+            return;
+        }
+        data.password = password;
+    } else if (passwordMode === 'remove') {
+        data.remove_password = true;
+    }
+    
     if (type === 'counter') {
         const maxAccess = parseInt(document.getElementById('editMaxAccess').value);
         if (maxAccess < 1) {
@@ -762,7 +809,18 @@ async function saveShareLink(shareId) {
             throw new Error(error.error || 'Failed to update share link');
         }
         
-        showSuccess('Share link updated successfully');
+        const result = await response.json();
+        
+        // Show generated password if applicable
+        if (result.generated_password) {
+            await Dialog.alert(
+                `Share link updated successfully!\n\nGenerated Password: ${result.generated_password}\n\n⚠️ Please save this password - it cannot be retrieved later.`,
+                'Share Link Updated'
+            );
+        } else {
+            showSuccess('Share link updated successfully');
+        }
+        
         document.getElementById('editShareModal').style.display = 'none';
         await loadShareLinks();
     } catch (error) {

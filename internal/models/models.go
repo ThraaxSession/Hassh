@@ -64,13 +64,15 @@ func (e *Entity) BeforeCreate(tx *gorm.DB) error {
 // ShareLink represents a shareable link
 type ShareLink struct {
 	ID          string    `gorm:"primarykey" json:"id"`
-	EntityIDs   JSON      `json:"entity_ids"` // JSON array of entity IDs
-	Type        string    `json:"type"`       // "permanent", "counter", "time"
-	AccessMode  string    `json:"access_mode"` // "readonly", "triggerable"
+	Name        string    `json:"name,omitempty"`         // Optional custom name for the link
+	EntityIDs   JSON      `json:"entity_ids"`             // JSON array of entity IDs
+	Type        string    `json:"type"`                   // "permanent", "counter", "time"
+	AccessMode  string    `json:"access_mode"`            // "readonly", "triggerable"
 	MaxAccess   int       `json:"max_access,omitempty"`
 	AccessCount int       `json:"access_count"`
 	ExpiresAt   time.Time `json:"expires_at,omitempty"`
 	Active      bool      `json:"active"`
+	Password    string    `json:"-"`                      // Hashed password for protected links (not exposed in JSON)
 	UserID      uint      `gorm:"not null" json:"user_id"`
 	User        User      `gorm:"foreignKey:UserID" json:"-"`
 	CreatedAt   time.Time `json:"created_at"`

@@ -331,11 +331,14 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var req struct {
-		EntityIDs  []string  `json:"entity_ids" binding:"required"`
-		Type       string    `json:"type" binding:"required"` // "permanent", "counter", "time"
-		AccessMode string    `json:"access_mode"`             // "readonly", "triggerable"
-		MaxAccess  int       `json:"max_access,omitempty"`
-		ExpiresAt  time.Time `json:"expires_at,omitempty"`
+		EntityIDs       []string  `json:"entity_ids" binding:"required"`
+		Type            string    `json:"type" binding:"required"`    // "permanent", "counter", "time"
+		AccessMode      string    `json:"access_mode"`                // "readonly", "triggerable"
+		Name            string    `json:"name,omitempty"`             // Optional custom name
+		Password        string    `json:"password,omitempty"`         // Optional password
+		GeneratePassword bool     `json:"generate_password,omitempty"` // Whether to auto-generate password
+		MaxAccess       int       `json:"max_access,omitempty"`
+		ExpiresAt       time.Time `json:"expires_at,omitempty"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -358,7 +361,7 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 		return
 	}
 
-	// Generate unique ID
+	// Generate unique ID (or use custom name if provided)
 	id := generateID()
 
 	// Convert entity IDs to JSON
@@ -368,11 +371,33 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 		return
 	}
 
+	// Handle password
+	var hashedPassword string
+	var generatedPassword string
+	if req.GeneratePassword {
+		// Generate a random password
+		generatedPassword = auth.GenerateRandomPassword()
+		hashedPassword, err = auth.HashPassword(generatedPassword)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate password"})
+			return
+		}
+	} else if req.Password != "" {
+		// Use provided password
+		hashedPassword, err = auth.HashPassword(req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+	}
+
 	shareLink := models.ShareLink{
 		ID:          id,
+		Name:        req.Name,
 		EntityIDs:   entityIDsJSON,
 		Type:        req.Type,
 		AccessMode:  req.AccessMode,
+		Password:    hashedPassword,
 		MaxAccess:   req.MaxAccess,
 		AccessCount: 0,
 		ExpiresAt:   req.ExpiresAt,
@@ -385,10 +410,21 @@ func (h *Handler) CreateShareLink(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, shareLink)
+	response := gin.H{
+		"share_link": shareLink,
+	}
+	
+	// Include generated password in response if it was generated
+	if generatedPassword != "" {
+		response["generated_password"] = generatedPassword
+		response["message"] = "Share link created. Please save the generated password - it cannot be retrieved later."
+	}
+
+	c.JSON(http.StatusCreated, response)
 }
 
 // GetShareLink retrieves entities for a share link (public endpoint)
+// Supports both GET (for non-password protected links) and POST (for password protected links)
 func (h *Handler) GetShareLink(c *gin.Context) {
 	id := c.Param("id")
 
@@ -396,6 +432,48 @@ func (h *Handler) GetShareLink(c *gin.Context) {
 	if err := database.DB.Preload("User").First(&shareLink, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Share link not found"})
 		return
+	}
+
+	// Check if link is password protected
+	if shareLink.Password != "" {
+		var req struct {
+			Password string `json:"password"`
+		}
+		
+		// For POST requests, try to bind the JSON body
+		if c.Request.Method == "POST" {
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid request body",
+					"password_required": true,
+				})
+				return
+			}
+			
+			if req.Password == "" {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Password required",
+					"password_required": true,
+				})
+				return
+			}
+			
+			// Validate password
+			if !auth.CheckPasswordHash(req.Password, shareLink.Password) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Invalid password",
+					"password_required": true,
+				})
+				return
+			}
+		} else {
+			// For GET requests, return that password is required
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Password required",
+				"password_required": true,
+			})
+			return
+		}
 	}
 
 	// Check if link is still valid
@@ -458,7 +536,27 @@ func (h *Handler) ListShareLinks(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, links)
+	// Add a flag to indicate if each link has a password
+	response := make([]gin.H, len(links))
+	for i, link := range links {
+		response[i] = gin.H{
+			"id":            link.ID,
+			"name":          link.Name,
+			"entity_ids":    link.EntityIDs,
+			"type":          link.Type,
+			"access_mode":   link.AccessMode,
+			"max_access":    link.MaxAccess,
+			"access_count":  link.AccessCount,
+			"expires_at":    link.ExpiresAt,
+			"active":        link.Active,
+			"user_id":       link.UserID,
+			"created_at":    link.CreatedAt,
+			"updated_at":    link.UpdatedAt,
+			"has_password":  link.Password != "",
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // DeleteShareLink deletes a share link
@@ -478,6 +576,23 @@ func (h *Handler) DeleteShareLink(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Share link deleted"})
+}
+
+// CheckShareLinkPassword checks if a share link requires a password (public endpoint)
+func (h *Handler) CheckShareLinkPassword(c *gin.Context) {
+	id := c.Param("id")
+
+	var shareLink models.ShareLink
+	if err := database.DB.First(&shareLink, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Share link not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"password_required": shareLink.Password != "",
+		"name":              shareLink.Name,
+		"active":            shareLink.Active,
+	})
 }
 
 // RefreshEntities refreshes all tracked entities from Home Assistant for all users
@@ -999,11 +1114,15 @@ func (h *Handler) UpdateShareLink(c *gin.Context) {
 	shareID := c.Param("id")
 
 	var req struct {
-		EntityIDs  []string `json:"entity_ids"`
-		Type       string   `json:"type"`
-		AccessMode string   `json:"access_mode"`
-		MaxAccess  int      `json:"max_access"`
-		ExpiresAt  string   `json:"expires_at"`
+		EntityIDs        []string `json:"entity_ids"`
+		Type             string   `json:"type"`
+		AccessMode       string   `json:"access_mode"`
+		Name             string   `json:"name"`
+		Password         string   `json:"password"`
+		RemovePassword   bool     `json:"remove_password"`
+		GeneratePassword bool     `json:"generate_password"`
+		MaxAccess        int      `json:"max_access"`
+		ExpiresAt        string   `json:"expires_at"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1040,6 +1159,30 @@ func (h *Handler) UpdateShareLink(c *gin.Context) {
 		shareLink.AccessMode = req.AccessMode
 	}
 
+	// Update name (allow empty string to clear)
+	shareLink.Name = req.Name
+
+	// Handle password updates
+	var generatedPassword string
+	if req.RemovePassword {
+		shareLink.Password = ""
+	} else if req.GeneratePassword {
+		generatedPassword = auth.GenerateRandomPassword()
+		hashedPassword, err := auth.HashPassword(generatedPassword)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate password"})
+			return
+		}
+		shareLink.Password = hashedPassword
+	} else if req.Password != "" {
+		hashedPassword, err := auth.HashPassword(req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		shareLink.Password = hashedPassword
+	}
+
 	if req.Type == "counter" && req.MaxAccess > 0 {
 		shareLink.MaxAccess = req.MaxAccess
 	}
@@ -1058,7 +1201,17 @@ func (h *Handler) UpdateShareLink(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, shareLink)
+	response := gin.H{
+		"share_link": shareLink,
+	}
+	
+	// Include generated password in response if it was generated
+	if generatedPassword != "" {
+		response["generated_password"] = generatedPassword
+		response["message"] = "Share link updated. Please save the generated password - it cannot be retrieved later."
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func generateID() string {

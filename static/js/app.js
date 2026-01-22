@@ -113,6 +113,7 @@ function setupEventListeners() {
     document.getElementById('browseEntitiesBtn').addEventListener('click', showBrowseModal);
     document.getElementById('createShareBtn').addEventListener('click', createShareLink);
     document.getElementById('shareType').addEventListener('change', handleShareTypeChange);
+    document.getElementById('passwordMode').addEventListener('change', handlePasswordModeChange);
     
     // Modal
     const modal = document.getElementById('browseModal');
@@ -460,6 +461,25 @@ async function createShareLink() {
         access_mode: accessMode
     };
     
+    // Add custom name if provided
+    const name = document.getElementById('shareName').value.trim();
+    if (name) {
+        data.name = name;
+    }
+    
+    // Handle password
+    const passwordMode = document.getElementById('passwordMode').value;
+    if (passwordMode === 'generate') {
+        data.generate_password = true;
+    } else if (passwordMode === 'custom') {
+        const password = document.getElementById('customPassword').value;
+        if (!password) {
+            showError('Please enter a password');
+            return;
+        }
+        data.password = password;
+    }
+    
     if (type === 'counter') {
         data.max_access = parseInt(document.getElementById('maxAccess').value);
     } else if (type === 'time') {
@@ -488,11 +508,26 @@ async function createShareLink() {
             throw new Error(error.error || 'Failed to create share link');
         }
         
-        showSuccess('Share link created successfully');
+        const result = await response.json();
+        
+        // Show generated password if applicable
+        if (result.generated_password) {
+            await Dialog.alert(
+                `Share link created successfully!\n\nGenerated Password: ${result.generated_password}\n\n⚠️ Please save this password - it cannot be retrieved later.`,
+                'Share Link Created'
+            );
+        } else {
+            showSuccess('Share link created successfully');
+        }
+        
         await loadShareLinks();
         
-        // Clear selections
+        // Clear form
         entityCheckboxes.forEach(cb => cb.checked = false);
+        document.getElementById('shareName').value = '';
+        document.getElementById('passwordMode').value = 'none';
+        document.getElementById('customPassword').value = '';
+        handlePasswordModeChange();
     } catch (error) {
         console.error('Error creating share link:', error);
         showError('Failed to create share link: ' + error.message);
@@ -550,6 +585,12 @@ function renderShareLinks() {
         const accessModeBadge = link.access_mode === 'triggerable' ? 'badge-permanent' : 'badge-counter';
         const accessModeText = link.access_mode === 'triggerable' ? 'Triggerable' : 'Read-Only';
         
+        // Custom name display
+        const nameDisplay = link.name ? `<div style="font-weight: bold; margin-bottom: 5px;">📝 ${link.name}</div>` : '';
+        
+        // Password protection badge
+        const passwordBadge = link.has_password ? '<span class="badge badge-time" style="background: #e74c3c;">🔒 Password Protected</span>' : '';
+        
         return `
             <div class="share-item">
                 <div class="share-header">
@@ -557,12 +598,14 @@ function renderShareLinks() {
                         <span class="badge ${typeBadge}">${link.type}</span>
                         <span class="badge ${accessModeBadge}">${accessModeText}</span>
                         <span class="badge ${statusBadge}">${link.active ? 'Active' : 'Inactive'}</span>
+                        ${passwordBadge}
                     </div>
                     <div>
                         <button class="btn btn-secondary" onclick="editShareLink('${link.id}')" style="margin-right: 5px;">Edit</button>
                         <button class="btn btn-danger" onclick="deleteShareLink('${link.id}')">Delete</button>
                     </div>
                 </div>
+                ${nameDisplay}
                 <div class="share-details">
                     <div>Entities: ${link.entity_ids.length}</div>
                     <div>${details}</div>
@@ -598,6 +641,11 @@ function editShareLink(shareId) {
     const content = document.getElementById('editShareContent');
     content.innerHTML = `
         <div class="form-group">
+            <label>Custom Link Name (Optional):</label>
+            <input type="text" id="editShareName" value="${escapeHtml(share.name || '')}" placeholder="e.g., Living Room Lights" />
+        </div>
+
+        <div class="form-group">
             <label>Select Entities to Share:</label>
             <div id="editShareEntitySelect" class="checkbox-group"></div>
         </div>
@@ -617,6 +665,21 @@ function editShareLink(shareId) {
                 <option value="readonly" ${share.access_mode === 'readonly' ? 'selected' : ''}>Read-Only</option>
                 <option value="triggerable" ${share.access_mode === 'triggerable' ? 'selected' : ''}>Triggerable</option>
             </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Password Protection:</label>
+            <select id="editPasswordMode">
+                <option value="keep">Keep Current ${share.has_password ? '(Protected)' : '(None)'}</option>
+                <option value="remove" ${!share.has_password ? 'disabled' : ''}>Remove Password</option>
+                <option value="generate">Generate New Password</option>
+                <option value="custom">Set Custom Password</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="editCustomPasswordGroup" style="display: none;">
+            <label>Enter Password:</label>
+            <input type="password" id="editCustomPassword" placeholder="Enter your password" />
         </div>
         
         <div id="editShareOptions"></div>
@@ -639,9 +702,17 @@ function editShareLink(shareId) {
     
     // Setup type change handler
     document.getElementById('editShareType').addEventListener('change', updateEditShareOptions);
+    document.getElementById('editPasswordMode').addEventListener('change', handleEditPasswordModeChange);
     updateEditShareOptions();
     
     document.getElementById('editShareModal').style.display = 'block';
+}
+
+function handleEditPasswordModeChange() {
+    const mode = document.getElementById('editPasswordMode').value;
+    const customPasswordGroup = document.getElementById('editCustomPasswordGroup');
+    
+    customPasswordGroup.style.display = mode === 'custom' ? 'block' : 'none';
 }
 
 function updateEditShareOptions() {
@@ -686,6 +757,25 @@ async function saveShareLink(shareId) {
         access_mode: accessMode
     };
     
+    // Add custom name
+    const name = document.getElementById('editShareName').value.trim();
+    data.name = name;
+    
+    // Handle password
+    const passwordMode = document.getElementById('editPasswordMode').value;
+    if (passwordMode === 'generate') {
+        data.generate_password = true;
+    } else if (passwordMode === 'custom') {
+        const password = document.getElementById('editCustomPassword').value;
+        if (!password) {
+            showError('Please enter a password');
+            return;
+        }
+        data.password = password;
+    } else if (passwordMode === 'remove') {
+        data.remove_password = true;
+    }
+    
     if (type === 'counter') {
         const maxAccess = parseInt(document.getElementById('editMaxAccess').value);
         if (maxAccess < 1) {
@@ -719,7 +809,18 @@ async function saveShareLink(shareId) {
             throw new Error(error.error || 'Failed to update share link');
         }
         
-        showSuccess('Share link updated successfully');
+        const result = await response.json();
+        
+        // Show generated password if applicable
+        if (result.generated_password) {
+            await Dialog.alert(
+                `Share link updated successfully!\n\nGenerated Password: ${result.generated_password}\n\n⚠️ Please save this password - it cannot be retrieved later.`,
+                'Share Link Updated'
+            );
+        } else {
+            showSuccess('Share link updated successfully');
+        }
+        
         document.getElementById('editShareModal').style.display = 'none';
         await loadShareLinks();
     } catch (error) {
@@ -795,6 +896,13 @@ function handleShareTypeChange() {
     maxAccessGroup.style.display = type === 'counter' ? 'block' : 'none';
     expiresAtGroup.style.display = type === 'time' ? 'block' : 'none';
     targetUserGroup.style.display = type === 'user' ? 'block' : 'none';
+}
+
+function handlePasswordModeChange() {
+    const mode = document.getElementById('passwordMode').value;
+    const customPasswordGroup = document.getElementById('customPasswordGroup');
+    
+    customPasswordGroup.style.display = mode === 'custom' ? 'block' : 'none';
 }
 
 // Auto-refresh

@@ -4,19 +4,127 @@ const API_BASE = '/api';
 // Get share ID from URL
 const shareId = window.location.pathname.split('/').pop();
 let accessMode = 'readonly';  // Will be set when data loads
+let passwordEntered = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    loadSharedEntities();
-    startAutoRefresh();
+    checkPasswordRequirement();
 });
 
-async function loadSharedEntities() {
+async function checkPasswordRequirement() {
     try {
-        const response = await fetch(`${API_BASE}/shares/${shareId}`);
+        const response = await fetch(`${API_BASE}/shares/${shareId}/check`);
         
         if (!response.ok) {
             const error = await response.json();
+            throw new Error(error.error || 'Failed to check share link');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.active) {
+            showError('This share link is no longer active');
+            return;
+        }
+        
+        if (data.password_required && !passwordEntered) {
+            showPasswordPrompt(data.name);
+        } else {
+            loadSharedEntities();
+            startAutoRefresh();
+        }
+    } catch (error) {
+        console.error('Error checking share link:', error);
+        showError(error.message);
+    }
+}
+
+function showPasswordPrompt(shareName) {
+    const container = document.getElementById('shareInfo');
+    const title = shareName ? `🔒 ${shareName}` : '🔒 Password Protected Share Link';
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <h2 style="color: var(--text-primary); margin-bottom: 20px;">${title}</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">This share link is password protected. Please enter the password to access.</p>
+            <div style="max-width: 400px; margin: 0 auto;">
+                <input type="password" id="sharePassword" placeholder="Enter password" 
+                    style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary);"
+                    onkeypress="if(event.key === 'Enter') submitPassword()">
+                <button onclick="submitPassword()" class="btn btn-primary" style="width: 100%;">Submit</button>
+                <div id="passwordError" style="color: #e74c3c; margin-top: 10px; display: none;"></div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('sharePassword').focus();
+}
+
+async function submitPassword() {
+    const password = document.getElementById('sharePassword').value;
+    const errorDiv = document.getElementById('passwordError');
+    
+    if (!password) {
+        errorDiv.textContent = 'Please enter a password';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/shares/${shareId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            if (data.password_required) {
+                errorDiv.textContent = 'Invalid password';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            throw new Error(data.error || 'Failed to access share link');
+        }
+        
+        passwordEntered = true;
+        accessMode = data.access_mode || 'readonly';
+        renderShareInfo(data.share, accessMode);
+        renderSharedEntities(data.entities, accessMode);
+        startAutoRefresh();
+    } catch (error) {
+        console.error('Error accessing share link:', error);
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+async function loadSharedEntities(password = null) {
+    try {
+        const options = {
+            method: password ? 'POST' : 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        
+        if (password) {
+            options.body = JSON.stringify({ password: password });
+        }
+        
+        const response = await fetch(`${API_BASE}/shares/${shareId}`, options);
+        
+        if (!response.ok) {
+            const error = await response.json();
+            
+            if (error.password_required) {
+                showPasswordPrompt(error.name);
+                return;
+            }
+            
             throw new Error(error.error || 'Failed to load shared entities');
         }
         

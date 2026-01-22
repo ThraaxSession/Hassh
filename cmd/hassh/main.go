@@ -82,7 +82,9 @@ func main() {
 		api.POST("/verify-otp", handler.VerifyOTP)                       // OTP verification during login
 		api.POST("/register", handler.Register)                          // Public registration (only when no admin exists)
 		api.GET("/admin-exists", handler.AdminExists)                    // Check if admin exists
-		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access
+		api.GET("/shares/:id/check", handler.CheckShareLinkPassword)     // Check if share link requires password
+		api.GET("/shares/:id", handler.GetShareLink)                     // Public share link access (non-password protected)
+		api.POST("/shares/:id", handler.GetShareLink)                    // Public share link access (password protected)
 		api.POST("/shares/:id/trigger/:entityId", handler.TriggerEntity) // Public trigger for triggerable shares
 
 		// Protected endpoints (require authentication)

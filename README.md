@@ -20,6 +20,24 @@ Hassh is a web service to share Home Assistant entities and dashboards with frie
 - 🚀 **Fast Backend**: Built with Go and Gin framework
 - 👑 **Admin Panel**: Full user management with admin role assignment
 
+## Screenshots
+
+### Login Page
+![Login Page](https://github.com/user-attachments/assets/92555371-3d2a-4603-8827-0a78e61ad77a)
+
+### Registration
+![Registration Page](https://github.com/user-attachments/assets/f59f9b14-ff54-46b9-b4dd-331ec29707bd)
+![Registration Success](https://github.com/user-attachments/assets/cdc065da-f4ed-4f0c-a051-5a487c745f8c)
+
+### Settings
+![Settings Page](https://github.com/user-attachments/assets/e8e8ea30-862b-4602-8503-63103c4f533f)
+
+### Dashboard
+![Main Dashboard](https://github.com/user-attachments/assets/7ebe48f2-1d7d-4292-bf35-ac13afc7c331)
+
+### Share Links
+![Share Links Page](https://github.com/user-attachments/assets/74308cd0-4ff2-48bf-b968-7b768c917c24)
+
 ## Prerequisites
 
 - Home Assistant instance (for entity tracking)

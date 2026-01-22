@@ -33,6 +33,9 @@ go.work.sum
 *.db-shm
 *.db-wal
 
+# Screenshots (temporary)
+screenshots/
+
 # Editor/IDE
 # .idea/
 # .vscode/

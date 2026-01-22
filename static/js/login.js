@@ -66,6 +66,7 @@ async function handleLogin(e) {
 
         // Store token and user info
         localStorage.setItem('token', data.token);
+        localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('username', data.user.username);
         localStorage.setItem('is_admin', data.is_admin ? 'true' : 'false');
 
@@ -154,6 +155,7 @@ async function handleOTPVerify(e, username, password) {
 
         // Store token and user info
         localStorage.setItem('token', data.token);
+        localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('username', data.user.username);
         localStorage.setItem('is_admin', data.is_admin ? 'true' : 'false');
 

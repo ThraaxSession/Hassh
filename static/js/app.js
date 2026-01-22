@@ -92,13 +92,9 @@ function displayUsername(username) {
     header.appendChild(userControls);
 }
 
-// Logout function
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('haUrl');
-    window.location.href = '/login';
-}
+// Logout function (now handled in utils.js)
+// Using the centralized logout function from utils.js
+
 
 // Get auth headers
 function getAuthHeaders() {

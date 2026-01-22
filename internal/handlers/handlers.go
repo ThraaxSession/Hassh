@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -65,8 +66,16 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	// Generate refresh token
+	refreshToken, err := auth.GenerateRefreshToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"token":                   token,
+		"refresh_token":           refreshToken,
 		"user":                    user,
 		"is_admin":                user.IsAdmin,
 		"require_password_change": user.RequirePasswordChange,
@@ -110,8 +119,16 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
+	// Generate refresh token
+	refreshToken, err := auth.GenerateRefreshToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"token":                   token,
+		"refresh_token":           refreshToken,
 		"user":                    user,
 		"generated_password":      password,
 		"require_password_change": true,
@@ -1255,11 +1272,63 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
+	// Generate refresh token
+	refreshToken, err := auth.GenerateRefreshToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"token":                   token,
+		"refresh_token":           refreshToken,
 		"user":                    user,
 		"is_admin":                user.IsAdmin,
 		"require_password_change": user.RequirePasswordChange,
 		"has_ha_config":           user.HAURL != "" && user.HAToken != "",
+	})
+}
+
+// RefreshToken handles refreshing an access token using a refresh token
+func (h *Handler) RefreshToken(c *gin.Context) {
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate refresh token and get user
+	user, err := auth.ValidateRefreshToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Generate new access token
+	token, err := auth.GenerateToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	// Generate new refresh token and revoke old one (token rotation)
+	newRefreshToken, err := auth.GenerateRefreshToken(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		return
+	}
+
+	// Revoke the old refresh token
+	if err := auth.RevokeRefreshToken(req.RefreshToken); err != nil {
+		// Log error but don't fail the request
+		log.Printf("Warning: Failed to revoke old refresh token: %v\n", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":         token,
+		"refresh_token": newRefreshToken,
 	})
 }

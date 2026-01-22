@@ -32,6 +32,12 @@ var migrations = []Migration{
 		Up:          migrateV1Up,
 		Down:        migrateV1Down,
 	},
+	{
+		Version:     2,
+		Description: "Add refresh_tokens table",
+		Up:          migrateV2Up,
+		Down:        migrateV2Down,
+	},
 }
 
 // migrateV1Up adds OTP-related fields to the users table
@@ -76,6 +82,33 @@ func migrateV1Down(db *gorm.DB) error {
 	// For now, we'll just log a warning
 	log.Println("Migration V1 Down: SQLite doesn't support DROP COLUMN. Manual intervention required.")
 	log.Println("To rollback, you would need to recreate the users table without OTP columns.")
+	return nil
+}
+
+// migrateV2Up creates the refresh_tokens table
+func migrateV2Up(db *gorm.DB) error {
+	// Check if refresh_tokens table exists
+	if db.Migrator().HasTable(&models.RefreshToken{}) {
+		log.Println("Migration V2: refresh_tokens table already exists, skipping")
+		return nil
+	}
+
+	// Create refresh_tokens table
+	if err := db.AutoMigrate(&models.RefreshToken{}); err != nil {
+		return fmt.Errorf("failed to create refresh_tokens table: %w", err)
+	}
+
+	log.Println("Migration V2: Created refresh_tokens table")
+	log.Println("Migration V2: Successfully completed")
+	return nil
+}
+
+// migrateV2Down removes the refresh_tokens table
+func migrateV2Down(db *gorm.DB) error {
+	if err := db.Migrator().DropTable(&models.RefreshToken{}); err != nil {
+		return fmt.Errorf("failed to drop refresh_tokens table: %w", err)
+	}
+	log.Println("Migration V2 Down: Dropped refresh_tokens table")
 	return nil
 }
 

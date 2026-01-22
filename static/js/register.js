@@ -57,6 +57,7 @@ async function handleRegister(e) {
 
         // Store token and user info
         localStorage.setItem('token', data.token);
+        localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('username', data.user.username);
 
         // Show generated password

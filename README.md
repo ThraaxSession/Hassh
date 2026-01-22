@@ -232,7 +232,7 @@ If you are an admin user, you have access to additional features:
     "password": "your-password"
   }
   ```
-  Returns: `{ "token": "jwt-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool, "otp_required": bool }`
+  Returns: `{ "token": "jwt-token", "refresh_token": "refresh-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool, "otp_required": bool }`
   
   If OTP is enabled for the user, returns: `{ "otp_required": true, "message": "OTP verification required" }`
 
@@ -244,7 +244,7 @@ If you are an admin user, you have access to additional features:
     "code": "123456"
   }
   ```
-  Returns: `{ "token": "jwt-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool }`
+  Returns: `{ "token": "jwt-token", "refresh_token": "refresh-token", "user": {...}, "is_admin": bool, "require_password_change": bool, "has_ha_config": bool }`
 
 - `POST /api/register` - Register first user (only available when no admin exists)
   ```json
@@ -252,7 +252,17 @@ If you are an admin user, you have access to additional features:
     "username": "your-username"
   }
   ```
-  Returns: `{ "token": "jwt-token", "user": {...}, "generated_password": "...", "require_password_change": true }`
+  Returns: `{ "token": "jwt-token", "refresh_token": "refresh-token", "user": {...}, "generated_password": "...", "require_password_change": true }`
+
+- `POST /api/refresh-token` - Refresh access token using refresh token
+  ```json
+  {
+    "refresh_token": "your-refresh-token"
+  }
+  ```
+  Returns: `{ "token": "new-jwt-token", "refresh_token": "new-refresh-token" }`
+  
+  Note: The old refresh token is invalidated upon successful refresh (token rotation)
 
 - `GET /api/admin-exists` - Check if admin user exists
   Returns: `{ "exists": bool }`
@@ -386,7 +396,11 @@ All protected endpoints require `Authorization: Bearer <token>` header.
 - **Backend**: Go with Gin framework
 - **Frontend**: Pure JavaScript with Ajax (no frameworks)
 - **Database**: SQLite for persistent storage with versioned migrations
-- **Authentication**: JWT tokens with optional two-factor authentication
+- **Authentication**: JWT tokens with refresh token support and optional two-factor authentication
+  - Access tokens expire after 24 hours
+  - Refresh tokens expire after 7 days
+  - Automatic token refresh on client side (checks every minute, refreshes 5 minutes before expiry)
+  - Token rotation on refresh (old refresh token is invalidated)
 - **Refresh**: Timer-based polling from Home Assistant
 - **Migrations**: Automatic database schema upgrades prevent breaking changes
 

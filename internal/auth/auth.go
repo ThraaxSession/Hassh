@@ -148,6 +148,65 @@ func GenerateToken(user *models.User) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
+// GenerateRefreshToken generates a refresh token for a user
+func GenerateRefreshToken(user *models.User) (string, error) {
+	// Generate a random token
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(bytes)
+
+	// Set expiration to 7 days from now
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+	// Store refresh token in database
+	refreshToken := models.RefreshToken{
+		Token:     token,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+	}
+
+	if err := database.DB.Create(&refreshToken).Error; err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// ValidateRefreshToken validates a refresh token and returns the associated user
+func ValidateRefreshToken(token string) (*models.User, error) {
+	var refreshToken models.RefreshToken
+	if err := database.DB.Where("token = ?", token).First(&refreshToken).Error; err != nil {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	// Check if token has expired
+	if time.Now().After(refreshToken.ExpiresAt) {
+		// Delete expired token
+		database.DB.Delete(&refreshToken)
+		return nil, errors.New("refresh token expired")
+	}
+
+	// Get user
+	user, err := GetUserByID(refreshToken.UserID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	return user, nil
+}
+
+// RevokeRefreshToken revokes a refresh token
+func RevokeRefreshToken(token string) error {
+	return database.DB.Where("token = ?", token).Delete(&models.RefreshToken{}).Error
+}
+
+// CleanupExpiredRefreshTokens removes expired refresh tokens from the database
+func CleanupExpiredRefreshTokens() error {
+	return database.DB.Where("expires_at < ?", time.Now()).Delete(&models.RefreshToken{}).Error
+}
+
 // ValidateToken validates a JWT token and returns the claims
 func ValidateToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}

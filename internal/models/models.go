@@ -24,6 +24,16 @@ type User struct {
 	UpdatedAt             time.Time `json:"updated_at"`
 }
 
+// RefreshToken represents a refresh token for JWT authentication
+type RefreshToken struct {
+	ID        uint      `gorm:"primarykey" json:"id"`
+	Token     string    `gorm:"uniqueIndex;not null" json:"token"`
+	UserID    uint      `gorm:"not null" json:"user_id"`
+	User      User      `gorm:"foreignKey:UserID" json:"-"`
+	ExpiresAt time.Time `gorm:"not null" json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // SharedEntity represents an entity shared with another user
 type SharedEntity struct {
 	ID         uint      `gorm:"primarykey" json:"id"`

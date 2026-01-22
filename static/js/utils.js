@@ -7,6 +7,15 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Centralized logout function
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('is_admin');
+    window.location.href = '/login';
+}
+
 // Helper function to sort entities alphabetically by ID, then by state
 function sortEntitiesByIdAndState(entities, idField = 'entity_id', stateField = 'state') {
     return [...entities].sort((a, b) => {
@@ -79,11 +88,7 @@ const TokenRefresh = {
             if (!response.ok) {
                 // Refresh token is invalid or expired, logout user
                 console.error('Failed to refresh token, logging out');
-                localStorage.removeItem('token');
-                localStorage.removeItem('refresh_token');
-                localStorage.removeItem('username');
-                localStorage.removeItem('is_admin');
-                window.location.href = '/login';
+                logout();
                 return false;
             }
             

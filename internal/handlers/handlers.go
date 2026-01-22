@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -1323,7 +1324,7 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	// Revoke the old refresh token
 	if err := auth.RevokeRefreshToken(req.RefreshToken); err != nil {
 		// Log error but don't fail the request
-		fmt.Printf("Warning: Failed to revoke old refresh token: %v\n", err)
+		log.Printf("Warning: Failed to revoke old refresh token: %v\n", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
